@@ -1,0 +1,27 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AI Chat Bookmarks</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="root">
+      <div class="header">
+        <strong>AI Chat Bookmarks</strong>
+        <div style="flex:1"></div>
+        <button id="clearAllBtn" class="btn btn-ghost">Clear all</button>
+      </div>
+
+      <input id="searchInput" class="search" placeholder="Search bookmarks..." />
+
+      <div id="list" style="max-height:420px; overflow:auto;"></div>
+
+      <div style="margin-top:8px;" class="small">
+        Tip: If Jump doesn't find the response immediately, open the original chat page from the bookmark's URL and try again.
+      </div>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
