@@ -7,6 +7,7 @@ import heroIllustration from "../assets/hero-illustration.png";
 import "../index.css";
 
 import {signInWithGoogle, signUp} from "../config/Auth"
+import { createUserDoc } from '../services/user.service';
 
 function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,8 +18,14 @@ function SignUp() {
   
       try{
   
-        await signUp(email, password);
-        alert("sign in successful")
+        const userCredential = await signUp(email, password);
+        console.log("google user credential :",userCredential);
+
+        const user = userCredential.user;
+        console.log("user object:",user);
+
+        await createUserDoc(user);
+        alert("sign in successful");
   
       } catch(error){
         alert(error.message);
@@ -30,8 +37,13 @@ function SignUp() {
 
         try{
 
-            await signInWithGoogle();
+            const userCredential = await signInWithGoogle();
+            console.log("google user credential :",userCredential);
 
+            const user = userCredential.user;
+            console.log("user object:",user);
+            await createUserDoc(user);
+            alert("sign in successful");
         }
         catch(error){
             alert(error.message)
