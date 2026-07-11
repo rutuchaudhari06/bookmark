@@ -38,10 +38,7 @@ export const getNotesBySubject = async (subjectId) => {
 
 };
 
-export const getBookmarksBySubject = async (subjectId) => {
-    const notes = await getNotesBySubject(subjectId);
-    return notes.filter((note) => note.bookmarkId);
-};
+
 
 export const updateNote = async (subjectId, noteId, updatedData) => {
 
@@ -57,6 +54,4 @@ export const deleteNote = async (subjectId, noteId) => {
     await deleteDoc(ref);
 };
 
-export const deleteBookmark = async (subjectId, bookmarkId) => {
-    await deleteNote(subjectId, bookmarkId);
-};
+

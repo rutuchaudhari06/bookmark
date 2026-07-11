@@ -84,6 +84,50 @@ async function runFirestoreQuery(accessToken, structuredQuery) {
   return response.json();
 }
 
+async function createBookmark(accessToken, subjectId, bookmark, userId) {
+
+  console.log("===== CREATE BOOKMARK =====");
+  console.log("subjectId:", subjectId);
+  console.log("bookmark:", bookmark);
+
+  const url = `${FIRESTORE_BASE_URL}/subjects/${subjectId}/bookmarks`;
+
+  console.log("POST URL:", url);
+
+  const body = {
+    fields: {
+      title: toFirestoreValue(bookmark.title || ""),
+      snippet: toFirestoreValue(bookmark.snippet || ""),
+      fullText: toFirestoreValue(bookmark.fullText || ""),
+      url: toFirestoreValue(bookmark.url || ""),
+      description: toFirestoreValue(bookmark.description || ""),
+      createdBy: toFirestoreValue(userId),
+      createdAt: {
+        timestampValue: new Date().toISOString()
+      }
+    }
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+
+  console.log("Status:", response.status);
+
+  const text = await response.text();
+  console.log("Response:", text);
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Save bookmark failed ${response.status}: ${text}`);
+  }
+
+  const json = await response.json();
+  return parseFirestoreDocument(json);
+}
+
 async function queryUserSubjects(userId, accessToken) {
   if (!userId || !accessToken) {
     return [];
@@ -157,38 +201,6 @@ async function createSubjectDocument(accessToken, subjectName, userId) {
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`Create subject failed ${response.status}: ${text}`);
-  }
-
-  const json = await response.json();
-  return parseFirestoreDocument(json);
-}
-
-async function createBookmarkNote(accessToken, subjectId, bookmark, userId) {
-  const url = `${FIRESTORE_BASE_URL}/subjects/${subjectId}/notes`;
-  const body = {
-    fields: {
-      title: toFirestoreValue(bookmark.title || bookmark.snippet?.slice(0, 80) || 'Bookmark'),
-      content: toFirestoreValue(bookmark.fullText || bookmark.snippet || ''),
-      snippet: toFirestoreValue(bookmark.snippet || ''),
-      url: toFirestoreValue(bookmark.url || ''),
-      bookmarkId: toFirestoreValue(bookmark.id),
-      subjectId: toFirestoreValue(subjectId),
-      createdBy: toFirestoreValue(userId),
-      visibility: toFirestoreValue('private'),
-      description: toFirestoreValue(bookmark.description || ''),
-      createdAt: { timestampValue: new Date().toISOString() },
-    },
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: authHeaders(accessToken),
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    throw new Error(`Save bookmark failed ${response.status}: ${text}`);
   }
 
   const json = await response.json();
@@ -302,9 +314,9 @@ function handleExtensionMessage(message, sendResponse) {
       return true;
     }
 
-    createBookmarkNote(accessToken, subjectId, bookmark, userId)
+    createBookmark(accessToken, subjectId, bookmark, userId)
       .then((doc) => {
-        sendResponse({ status: 'ok', noteId: doc.id });
+        sendResponse({ status: 'ok', bookmarkId: doc.id });
       })
       .catch((err) => {
         console.error('saveBookmarkToFirestore failed:', err);
