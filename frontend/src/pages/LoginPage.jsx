@@ -13,7 +13,9 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogIn = async () => {
+  const handleLogIn = async (e) => {
+
+    e.preventDefault(); 
 
     try{
 
@@ -47,7 +49,7 @@ const LoginPage = () => {
           </p>
 
           {/* Login Form */}
-          <form className="space-y-5">
+          <form className="space-y-5" onSubmit={handleLogIn}>
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email
@@ -89,7 +91,7 @@ const LoginPage = () => {
               </a>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" onClick={handleLogIn}>
+            <Button type="submit" className="w-full" size="lg">
               Sign in
             </Button>
           </form>
