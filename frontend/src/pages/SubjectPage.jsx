@@ -16,9 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   createNote,
   getNotesBySubject,
-  getBookmarksBySubject,
   deleteNote,
-  deleteBookmark,
   updateNote,
 } from "../services/noteService";
 import NoteCard from "../components/NoteCard";
@@ -34,6 +32,8 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import BookmarkCard from "../components/BookmarkCard";
 
+import { getBookmarks , deleteBookmark } from "../services/bookmarkService";
+
 function SubjectPage() {
   const { user } = useAuth();
   const { subjectId } = useParams();
@@ -43,7 +43,6 @@ function SubjectPage() {
 
   // notes
   const [notes, setNotes] = useState([]);
-  const [bookmarks, setBookmarks] = useState([]);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [visibility, setVisibility] = useState("private");
@@ -64,6 +63,10 @@ function SubjectPage() {
   const [showNoteForm, setShowNoteForm] = useState(false); //showNoteForm : it tells wheather form is shown or hidden , the form is only shown when we click on create flash
   const [showFlashcardForm, setShowFlashcardForm] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  //bookmark
+
+  const [bookmarks,setBookmarks]=useState([]);
 
   const loadSubject = async () => {
     const data = await getSubjectById(subjectId);
@@ -122,14 +125,17 @@ function SubjectPage() {
   };
 
   const loadBookmarks = async () => {
-    if (!subject) return;
-    try {
-      const data = await getBookmarksBySubject(subject.id);
-      setBookmarks(data);
-    } catch (error) {
-      console.error("Failed to load bookmarks:", error);
-      setErrorMessage("You do not have permission to read bookmarks for this subject.");
-    }
+        if (!subject || !user) return;
+
+        try {
+          const data = await getBookmarks(subject.id);
+          setBookmarks(data);
+        } catch (error) {
+          console.error("Failed to load bookmarks:", error);
+          setErrorMessage(
+            "You do not have permission to read bookmarks."
+          );
+        }
   };
 
   const handleDeleteBookmark = async (bookmarkId) => {

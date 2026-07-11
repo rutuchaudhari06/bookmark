@@ -178,7 +178,7 @@ async function saveBookmarkToFirestore(bookmark, subjectId, userInfo) {
           reject(new Error((resp && resp.message) || 'Failed to save bookmark'));
           return;
         }
-        resolve(resp.noteId);
+        resolve(resp.bookmarkId || resp.noteId);
       }
     );
   });
