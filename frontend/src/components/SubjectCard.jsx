@@ -1,162 +1,60 @@
-import React, { useState } from "react";
-import {
-  BookOpen,
-  Edit2,
-  Share2,
-  Trash2,
-  Check,
-  X,
-  Bookmark,
-  Layers,
-} from "lucide-react";
+import { Bookmark, Layers, BookOpen, Share2, Trash2 } from "lucide-react";
 
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+function formatDate(timestamp) {
+  if (!timestamp) return "";
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
 
-function SubjectCard({ subject, onDelete, onUpdate, onShare, onClick }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [newName, setNewName] = useState(subject.subjectName);
-
-  const handleSave = (e) => {
-    e.stopPropagation();
-    onUpdate(subject.id, newName);
-    setIsEditing(false);
-  };
-
-  const todayLabel = "Dec 10"; // static label to match design; you can replace with real date
-
+function SubjectCard({ subject, isOwner, counts, onDeleteRequest, onShare, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="group flex min-h-[340px] cursor-pointer flex-col justify-between rounded-xl border border-[#cfc4b3] bg-[#f7f2ea] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+      className="group flex min-h-[300px] cursor-pointer flex-col justify-between rounded-2xl border border-[#cfc4b3] bg-[#f7f2ea] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
     >
-      {/* Folder illustration area */}
-      <div className="border-b border-[#cfc4b3] bg-[#f7f2ea] px-4 pb-6 pt-6">
-        <div className="relative h-52 w-full">
-          {/* folder body */}
-          <div className="absolute bottom-2 left-0 right-1 top-7 rounded-[28px] bg-[#4b6478] shadow-[0_4px_0_rgba(0,0,0,0.22)]" />
-
-          {/* front-left tab merged into body */}
-          <div className="absolute left-0 top-1 z-20 h-14 w-[58%] rounded-[28px] bg-[#4b6478]" />
-
-          {/* soft connector so the tab and body appear as one joined shape */}
-          <div className="absolute left-[42%] top-7 z-20 h-6 w-[20%] bg-[#4b6478]" />
-
-          {/* inner paper strip */}
+      <div className="rounded-t-2xl bg-[#eee6d8] px-5 pb-4 pt-5">
+        <div className="relative mx-auto h-36 w-full">
+          <div className="absolute left-0 top-4 h-8 w-[55%] rounded-t-lg bg-[#4b6478]" />
+          <div className="absolute inset-x-0 bottom-0 top-9 rounded-lg rounded-tl-none bg-[#4b6478] shadow-[0_3px_0_rgba(0,0,0,0.18)]" />
           <div
-            className="absolute left-6 right-6 top-9 z-30 h-5 bg-gradient-to-r from-[#f9f9f9] to-[#d4d4d4]"
-            style={{
-              borderTopLeftRadius: "6px",
-              borderTopRightRadius: "6px",
-              clipPath: "polygon(0 0, 100% 0, 84% 100%, 0% 100%)",
-            }}
+            className="absolute left-4 right-4 top-11 h-4 bg-gradient-to-r from-[#f9f9f9] to-[#d8d8d8]"
+            style={{ clipPath: "polygon(0 0, 100% 0, 88% 100%, 0% 100%)" }}
           />
         </div>
       </div>
 
-      {/* Text area */}
-      <div className="border-b border-[#cfc4b3] px-4 py-3">
-        {isEditing ? (
-          <div className="space-y-2">
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1"
-                onClick={handleSave}
-              >
-                <Check className="h-4 w-4" />
-                Save
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="gap-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(false);
-                  setNewName(subject.subjectName);
-                }}
-              >
-                <X className="h-4 w-4" />
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <h3 className="text-sm font-semibold text-foreground">
-              {subject.subjectName || "folder name"}
-            </h3>
-            <p className="mt-1 text-xs text-muted-foreground">{todayLabel}</p>
-          </>
-        )}
+      <div className="border-t border-[#cfc4b3] px-4 py-3">
+        <h3 className="text-sm font-semibold text-foreground">{subject.subjectName || "folder name"}</h3>
+        <p className="mt-1 text-xs text-muted-foreground">{formatDate(subject.createdAt)}</p>
       </div>
 
-      {/* Stats and actions row */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-[#cfc4b3] px-4 py-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-4">
-          <span className="inline-flex items-center gap-1">
-            <Bookmark className="h-3 w-3" />
-            0
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Layers className="h-3 w-3" />
-            0
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <BookOpen className="h-3 w-3" />
-            0
-          </span>
+          <span className="inline-flex items-center gap-1"><Bookmark className="h-3 w-3" />{counts?.bookmarks ?? 0}</span>
+          <span className="inline-flex items-center gap-1"><Layers className="h-3 w-3" />{counts?.flashcards ?? 0}</span>
+          <span className="inline-flex items-center gap-1"><BookOpen className="h-3 w-3" />{counts?.notes ?? 0}</span>
         </div>
 
-        {!isEditing && (
-          <div className="flex items-center gap-1">
-            <Button
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onShare(subject.id); }}
+            className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-[#4b6478]/10 hover:text-[#4b6478]"
+            aria-label="Share folder"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+          </button>
+          {isOwner && (
+            <button
               type="button"
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsEditing(true);
-              }}
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            >
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onShare(subject.id);
-              }}
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(subject.id);
-              }}
-              className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onDeleteRequest(subject); }}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-destructive hover:bg-destructive/10"
+              aria-label="Delete folder"
             >
               <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

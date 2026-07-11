@@ -12,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 
+import { createNotification } from "./notificationService";
+
 const requestsRef = (subjectId) =>
   collection(db, "subjects", subjectId, "joinRequests");
 
@@ -39,6 +41,15 @@ export const createJoinRequest = async (subjectId, user) => {
     createdAt: serverTimestamp(),
   });
 
+  if (ownerId) {
+    await createNotification(ownerId, {
+      type: "join_request",
+      title: "New access request",
+      description: `${user.displayName || user.email} requested access to "${subjectName || "your folder"}"`,
+      subjectId,
+    });
+  }
+
   return { id: docRef.id, userId: user.uid, status: "pending" };
 };
 
@@ -61,10 +72,26 @@ export const approveJoinRequest = async (subjectId, requestId, userId) => {
 
   const requestDocRef = doc(db, "subjects", subjectId, "joinRequests", requestId);
   await deleteDoc(requestDocRef);
+
+  await createNotification(userId, {
+    type: "request_approved",
+    title: "Request approved",
+    description: `You now have access to "${subjectName || "the folder"}"`,
+    subjectId,
+  });
 };
 
 // Owner-only: reject — just remove the request, collaborators untouched.
 export const rejectJoinRequest = async (subjectId, requestId) => {
   const requestDocRef = doc(db, "subjects", subjectId, "joinRequests", requestId);
   await deleteDoc(requestDocRef);
+
+  if (userId) {
+    await createNotification(userId, {
+      type: "request_rejected",
+      title: "Request declined",
+      description: `Your request to join "${subjectName || "the folder"}" was declined`,
+      subjectId,
+    });
+  }
 };
