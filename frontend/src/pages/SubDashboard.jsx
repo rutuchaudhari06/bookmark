@@ -113,82 +113,103 @@ function SubDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f3eee5]">
-      {/* Top navigation / header */}
-      <header className="border-b border-border bg-[#7d0000] text-cream-dark">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-cream-dark/90">
-              <Bookmark className="h-5 w-5 text-[#7d0000]" />
-            </div>
-            <div>
-              <p className="font-serif text-xl font-semibold text-cream-dark">
-                AIMarks
-              </p>
-            </div>
-          </div>
+    <div
+      className="relative min-h-screen bg-[#F7F3EC]"
+      style={{ fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif" }}
+    >
+      {/* Very faint paper grain, CSS only */}
+      <div
+        className="pointer-events-none fixed inset-0 opacity-[0.3]"
+        style={{
+          backgroundImage: "radial-gradient(rgba(90,75,50,0.08) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
+        }}
+      />
 
-          <div className="flex items-center gap-3">
-            {user && (
-                <div className="flex items-center gap-3">
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm font-medium text-cream-dark">{user.email}</span>
-                  </div>
-                  <NotificationBell userId={user.uid} />
-                </div>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+      {/* Decorative notebook-cover header — a floating rounded card, not a full-bleed navbar */}
+      <header className="relative mx-4 mt-4 h-32 overflow-hidden rounded-[28px] bg-[#F7F3EC] shadow-[0_18px_40px_-22px_rgba(46,30,25,0.35)] sm:mx-6 sm:mt-6 md:h-36">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 400 100"
+          preserveAspectRatio="none"
+        >
+          <path d="M170,0 C90,25 90,75 170,100 H400 V0 Z" fill="#7A0A12" />
+        </svg>
+
+        {/* Left cream zone — brand mark */}
+        <div className="absolute left-6 top-1/2 flex -translate-y-1/2 items-center gap-2 sm:left-8">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7A0A12]">
+            <Bookmark className="h-4 w-4 text-[#F7F3EC]" />
           </div>
+          <span className="hidden text-lg font-semibold tracking-tight text-[#2E2E2E] sm:inline">
+            AIMarks
+          </span>
+        </div>
+
+        {/* Right burgundy zone — account controls */}
+        <div className="absolute right-6 top-1/2 flex -translate-y-1/2 items-center gap-3 sm:right-8">
+          {user && (
+            <div className="flex items-center gap-3">
+              <span className="hidden text-sm font-medium text-[#F7F3EC] md:inline">
+                {user.email}
+              </span>
+              <NotificationBell userId={user.uid} />
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 rounded-full border-[#F7F3EC]/40 bg-transparent font-medium text-[#F7F3EC] transition-colors duration-200 hover:bg-[#F7F3EC] hover:text-[#7A0A12]"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Logout</span>
+          </Button>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-8">
-        {/* Search + actions row (outside any container) */}
-        <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-1 flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="relative w-full max-w-md">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
-                  <Search className="h-4 w-4" />
-                </span>
-                <Input
-                  className="h-11 rounded-full bg-[#fbf7f0] pl-9"
-                  placeholder="Search your folder"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
+      <main className="relative z-10 mx-auto flex max-w-6xl flex-col gap-8 px-6 py-10">
+        {/* Search + actions row */}
+        <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-md">
+              <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-[#8A8175]">
+                <Search className="h-4 w-4" />
+              </span>
+              <Input
+                className="h-12 rounded-full border-0 bg-[#FBF8F3] pl-11 text-sm text-[#2E2E2E] shadow-[0_2px_10px_-4px_rgba(46,46,46,0.12)] transition-shadow duration-200 placeholder:text-[#8A8175] focus-visible:shadow-[0_0_0_3px_rgba(122,10,18,0.12)] focus-visible:ring-0"
+                placeholder="Search folders..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
+
+            <button
+              type="button"
+              className="h-10 shrink-0 rounded-full border border-[#E6DED2] bg-[#FBF8F3] px-4 text-sm font-medium text-[#2E2E2E] shadow-[0_2px_8px_-4px_rgba(46,46,46,0.10)] transition-colors duration-200 hover:bg-white"
+            >
+              Stickers
+            </button>
           </div>
 
-          <div className="mt-2 flex justify-end md:mt-0">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="gap-2 rounded-full border-[#b34747] bg-[#f7f2ea] px-6 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-[#f7f2ea]"
-              onClick={() => setIsCreateOpen(true)}
-              disabled={isCreating}
-            >
-              <Plus className="h-4 w-4" />
-              {isCreating ? "Creating..." : "Create folder"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 w-fit gap-2 rounded-full border-[#7A0A12] bg-transparent px-6 text-sm font-medium text-[#7A0A12] transition-colors duration-200 hover:bg-[#7A0A12] hover:text-white"
+            onClick={() => setIsCreateOpen(true)}
+            disabled={isCreating}
+          >
+            <Plus className="h-4 w-4" />
+            {isCreating ? "Creating..." : "Create folder"}
+          </Button>
         </section>
 
         {isCreateOpen && (
-          <section className="rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
+          <section className="rounded-2xl border border-[#E6DED2] bg-[#FBF8F3] p-5 shadow-[0_2px_10px_-4px_rgba(46,46,46,0.10)]">
             <form
-              className="flex flex-col gap-3 md:flex-row md:items-center"
+              className="flex flex-col gap-3 sm:flex-row sm:items-center"
               onSubmit={async (e) => {
                 const isCreated = await handleCreate(e);
                 if (isCreated) {
@@ -200,13 +221,13 @@ function SubDashboard() {
                 value={subjectName}
                 onChange={(e) => setSubjectName(e.target.value)}
                 placeholder="Folder name"
-                className="h-11 bg-white"
+                className="h-11 rounded-xl border-[#E6DED2] bg-white text-sm"
                 autoFocus
               />
               <div className="flex items-center gap-2">
                 <Button
                   type="submit"
-                  className="h-11"
+                  className="h-11 rounded-full bg-[#7A0A12] text-sm font-medium hover:bg-[#5f0810]"
                   disabled={!subjectName.trim() || isCreating}
                 >
                   {isCreating ? "Creating..." : "Create"}
@@ -214,7 +235,7 @@ function SubDashboard() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11"
+                  className="h-11 rounded-full border-[#E6DED2] text-sm font-medium"
                   onClick={() => {
                     setIsCreateOpen(false);
                     setSubjectName("");
@@ -227,9 +248,9 @@ function SubDashboard() {
           </section>
         )}
 
-        {/* Subjects grid (cards sit on page background, not in container) */}
-        <section className="mt-2 space-y-4">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Subjects grid */}
+        <section className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 min-[640px]:grid-cols-2 lg:grid-cols-3">
                   {filteredSubjects.map((subject) => (
                         <SubjectCard
                           key={subject.id}
@@ -244,7 +265,7 @@ function SubDashboard() {
           </div>
 
           {filteredSubjects.length === 0 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-[#8A8175]">
               {subjects.length === 0
                 ? "No folders yet. Use “Create folder” to start organizing your subjects."
                 : "No folders match your search."}

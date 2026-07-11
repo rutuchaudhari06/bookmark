@@ -64,37 +64,40 @@ export default function NotificationBell({ userId }) {
       <button
         type="button"
         onClick={handleToggle}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full text-cream-dark hover:bg-cream-dark/10"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full text-[#F7F3EC] transition-colors duration-200 hover:bg-white/10"
         aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell
+          className="h-5 w-5"
+          style={unreadCount > 0 ? { animation: "bellBounce 1.6s ease-in-out infinite" } : undefined}
+        />
         {unreadCount > 0 && (
-          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-[#7d0000]" />
+          <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#e0b450] ring-2 ring-[#7A0A12]" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 max-h-96 w-80 overflow-y-auto rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] shadow-lg">
-          <div className="border-b border-[#d0c7be] px-4 py-2 text-sm font-semibold text-foreground">
+        <div className="absolute right-0 top-11 z-50 max-h-96 w-80 overflow-y-auto rounded-2xl border border-[#E6DED2] bg-[#FBF8F3] shadow-[0_18px_40px_-20px_rgba(46,46,46,0.35)]">
+          <div className="border-b border-[#E6DED2] px-4 py-3 text-sm font-medium text-[#2E2E2E]">
             Notifications
           </div>
           {loading ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">Loading...</p>
+            <p className="px-4 py-6 text-center text-xs text-[#8A8175]">Loading...</p>
           ) : notifications.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-muted-foreground">No notifications yet.</p>
+            <p className="px-4 py-6 text-center text-xs text-[#8A8175]">No notifications yet.</p>
           ) : (
-            <ul className="divide-y divide-[#e2d8c8]">
+            <ul className="divide-y divide-[#E6DED2]">
               {notifications.map((n) => {
                 const Icon = ICONS[n.type] || Bell;
                 return (
-                  <li key={n.id} className={`flex gap-3 px-4 py-3 ${!n.read ? "bg-[#f0e6d2]" : ""}`}>
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#4b6478]/10 text-[#4b6478]">
+                  <li key={n.id} className={`flex gap-3 px-4 py-3 ${!n.read ? "bg-[#F7F3EC]" : ""}`}>
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5C7385]/10 text-[#5C7385]">
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{n.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{n.description}</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{timeAgo(n.createdAt)}</p>
+                      <p className="text-sm font-medium text-[#2E2E2E]">{n.title}</p>
+                      <p className="truncate text-xs text-[#8A8175]">{n.description}</p>
+                      <p className="mt-0.5 text-[10px] text-[#8A8175]">{timeAgo(n.createdAt)}</p>
                     </div>
                   </li>
                 );
