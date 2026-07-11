@@ -66,14 +66,21 @@ export const deleteSubject = async(subjectId)=>{
 
 };
 
+// AFTER
 export const generateShareToken = async (subjectId) => {
 
-    const token = Math.random().toString(36).substring(2,10); //base 36 means it includes a to z and numbers from 0 to 9
+    const subjectRef = doc(db, "subjects", subjectId);
+    const snap = await getDoc(subjectRef);
 
-    const subjectRef=doc(db,"subjects",subjectId);
+    const existingToken = snap.exists() ? snap.data().shareToken : null;
+    if (existingToken) {
+        return existingToken; // reuse instead of regenerating
+    }
 
-    await updateDoc(subjectRef,{
-        shareToken:token
+    const token = Math.random().toString(36).substring(2, 10);
+
+    await updateDoc(subjectRef, {
+        shareToken: token,
     });
 
     return token;

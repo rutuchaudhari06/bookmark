@@ -10,6 +10,7 @@ import {
   Search,
   Lock,
   Image,
+  Share2, Check, X
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -33,6 +34,13 @@ import { Input } from "../components/ui/input";
 import BookmarkCard from "../components/BookmarkCard";
 
 import { getBookmarks , deleteBookmark } from "../services/bookmarkService";
+import { generateShareToken } from "../services/subjectService";
+
+import {
+  getPendingRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
+} from "../services/joinRequestService";
 
 function SubjectPage() {
   const { user } = useAuth();
@@ -67,6 +75,13 @@ function SubjectPage() {
   //bookmark
 
   const [bookmarks,setBookmarks]=useState([]);
+
+  const [shareLink, setShareLink] = useState("");
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [requestActionId, setRequestActionId] = useState(null);
 
   const loadSubject = async () => {
     const data = await getSubjectById(subjectId);
@@ -242,6 +257,12 @@ function SubjectPage() {
     }
   }, [user, subject, subjectId]);
 
+  useEffect(() => {
+        if (subject && user && subject.ownerId === user.uid) {
+          loadPendingRequests();
+        }
+  }, [subject, user]);
+
   if (!subject) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -292,22 +313,175 @@ function SubjectPage() {
     }
   };
 
+  const loadPendingRequests = async () => {
+  if (!subject) return;
+  setIsLoadingRequests(true);
+  try {
+    const requests = await getPendingRequests(subject.id);
+    setPendingRequests(requests);
+  } catch (error) {
+    console.error("Failed to load join requests:", error);
+  } finally {
+    setIsLoadingRequests(false);
+  }
+};
+
+//runs when owner clicks on share button to generate share link for that subject
+const handleOpenShare = async () => {
+  if (!subject) return;
+  setIsShareOpen(true);
+  setIsGeneratingLink(true);
+  try {
+    const token = await generateShareToken(subject.id);
+    setShareLink(`${window.location.origin}/join/${token}`);
+  } catch (error) {
+    console.error("Failed to generate share link:", error);
+  } finally {
+    setIsGeneratingLink(false);
+  }
+};
+
+//runs when user clicks on copy button to copy the share link to clipboard
+const handleCopyShareLink = () => {
+  navigator.clipboard
+    ?.writeText(shareLink)
+    .then(() => alert("Share link copied to clipboard!"))
+    .catch(() => alert(`Share this link: ${shareLink}`));
+};
+
+const handleApproveRequest = async (request) => {
+  if (!subject) return;
+  setRequestActionId(request.id);
+  try {
+    await approveJoinRequest(subject.id, request.id, request.userId);
+    await loadPendingRequests();
+    await loadSubject(); // refresh collaborators list
+  } catch (error) {
+    console.error("Failed to approve request:", error);
+  } finally {
+    setRequestActionId(null);
+  }
+};
+
+const handleRejectRequest = async (request) => {
+  if (!subject) return;
+  setRequestActionId(request.id);
+  try {
+    await rejectJoinRequest(subject.id, request.id);
+    await loadPendingRequests();
+  } catch (error) {
+    console.error("Failed to reject request:", error);
+  } finally {
+    setRequestActionId(null);
+  }
+};
+
   return (
     <div className="min-h-screen bg-[#f3eee5]">
       {/* Top red bar */}
       <header className="border-b border-border bg-[#7d0000] text-cream-dark">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 text-cream-dark hover:bg-cream-dark/10"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Home
-          </Button>
-        </div>
+                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-2 text-cream-dark hover:bg-cream-dark/10"
+                    onClick={() => navigate("/")}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Home
+                  </Button>
+
+                  {isOwner && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-cream-dark hover:text-[#7d0000]"
+                      onClick={handleOpenShare}
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share Folder
+                    </Button>
+                  )}
+                </div>
       </header>
+
+      {isOwner && isShareOpen && (
+                        <div className="mx-6 mt-4 rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-foreground">Share this folder</span>
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground"
+                              onClick={() => setIsShareOpen(false)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="mt-2 flex flex-col gap-2 md:flex-row">
+                            <Input
+                              readOnly
+                              value={isGeneratingLink ? "Generating link..." : shareLink}
+                              className="h-10 bg-white"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleCopyShareLink}
+                              disabled={isGeneratingLink || !shareLink}
+                            >
+                              Copy Link
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {isOwner && pendingRequests.length > 0 && (
+                        <div className="mx-6 mt-4 rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
+                          <p className="text-sm font-medium text-foreground">
+                            Pending Requests ({pendingRequests.length})
+                          </p>
+                          <div className="mt-3 space-y-2">
+                            {pendingRequests.map((request) => (
+                              <div
+                                key={request.id}
+                                className="flex items-center justify-between rounded-lg border border-[#d0c7be] bg-white px-3 py-2 text-sm"
+                              >
+                                <div>
+                                  <p className="font-medium text-foreground">
+                                    {request.displayName || request.email || "Unknown user"}
+                                  </p>
+                                  {request.email && (
+                                    <p className="text-xs text-muted-foreground">{request.email}</p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    className="gap-1"
+                                    disabled={requestActionId === request.id}
+                                    onClick={() => handleApproveRequest(request)}
+                                  >
+                                    <Check className="h-4 w-4" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="gap-1"
+                                    disabled={requestActionId === request.id}
+                                    onClick={() => handleRejectRequest(request)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                    Reject
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+      )}
 
       <main className="mt-6 flex flex-col gap-0 pb-10">
         {/* Folder header */}
