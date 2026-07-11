@@ -61,8 +61,32 @@
     exportBtn.textContent = 'Export';
     exportBtn.addEventListener('click', () => exportSingle(b));
 
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn';
+    saveBtn.style.marginLeft = '8px';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', () => {
+      const name = prompt('Enter folder name to save bookmark (existing or new):', b.folderName || '');
+      if (!name) return;
+      // persist folder list and bookmark
+      chrome.storage.local.get({ folders: [] }, (res) => {
+        const folders = res.folders || [];
+        if (!folders.find(f => f.name === name)) {
+          folders.push({ id: 'folder-' + Date.now() + '-' + Math.floor(Math.random()*10000), name, createdAt: new Date().toISOString() });
+          chrome.storage.local.set({ folders });
+        }
+        loadBookmarks((bookmarks) => {
+          if (bookmarks[index]) {
+            bookmarks[index].folderName = name;
+            saveBookmarks(bookmarks, () => reloadAndRender());
+          }
+        });
+      });
+    });
+
     controls.appendChild(jumpBtn);
     controls.appendChild(deleteBtn);
+    controls.appendChild(saveBtn);
     controls.appendChild(exportBtn);
 
     const textareaWrap = document.createElement('div');
