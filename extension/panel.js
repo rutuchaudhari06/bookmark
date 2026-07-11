@@ -231,6 +231,13 @@
         font-size: 13px;
         padding: 40px 20px;
       }
+      .bookmark-dropdown { background: white; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.18); padding: 10px; font-family: inherit; }
+      .bd-list { max-height: 220px; overflow:auto; margin-bottom:8px; }
+      .bd-item { display:flex; justify-content:space-between; align-items:center; padding:6px; border-radius:6px; background:#f7f8fa; margin-bottom:6px; }
+      .bd-item:hover { background:#eef2ff; }
+      .bd-row { display:flex; gap:8px; }
+      #bd-new-folder { flex:1; padding:6px; border-radius:6px; border:1px solid #ddd; }
+      .bd-name { font-size:13px; color:#111; }
     `;
     document.head.appendChild(style);
   }
@@ -285,12 +292,91 @@
     window.postMessage({ type: 'bookmarkPanelMessage', ...message }, '*');
   }
 
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (m) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])
+    );
+  }
+
+  let activeFolderDropdownClose = null;
+
+  function closeActiveFolderDropdown() {
+    if (typeof activeFolderDropdownClose === 'function') {
+      activeFolderDropdownClose();
+      activeFolderDropdownClose = null;
+    }
+  }
+
   // Bookmark management functions (communicate with content script)
   function formatDate(iso) {
     try {
       return new Date(iso).toLocaleString();
     } catch (e) {
       return iso;
+    }
+  }
+
+  function renderFolderList(listEl, folders, index, onSelect, errorMessage) {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    if (errorMessage) {
+      listEl.textContent = errorMessage;
+      return;
+    }
+    if (!folders || folders.length === 0) {
+      listEl.textContent = 'No folders yet';
+      return;
+    }
+
+    folders.forEach((f) => {
+      const row = document.createElement('div');
+      row.className = 'bd-item';
+      const name = document.createElement('span');
+      name.className = 'bd-name';
+      name.textContent = f.name;
+      const selBtn = document.createElement('button');
+      selBtn.className = 'bookmark-btn bookmark-btn-secondary';
+      selBtn.textContent = 'Select';
+      selBtn.addEventListener('click', () => {
+        sendToContentScript({ action: 'saveBookmarkToFolder', index, folderId: f.id });
+        if (onSelect) onSelect();
+      });
+      row.appendChild(name);
+      row.appendChild(selBtn);
+      listEl.appendChild(row);
+    });
+  }
+
+  function renderFolderResponse(folders, justCreated, folderIndex, errorMessage) {
+    if (errorMessage) {
+      const listEl = document.getElementById('bd-folder-list');
+      if (listEl) {
+        listEl.textContent = errorMessage;
+      }
+      const modalList = document.getElementById('bookmark-folder-list');
+      if (modalList) {
+        modalList.textContent = errorMessage;
+      }
+      return;
+    }
+
+    const index = typeof folderIndex === 'number' ? folderIndex : (window._bookmarkFolderIndex || 0);
+
+    const modalList = document.getElementById('bookmark-folder-list');
+    if (modalList) {
+      renderFolderList(modalList, folders, index, closeFolderModal);
+    }
+
+    const listEl = document.getElementById('bd-folder-list');
+    if (listEl) {
+      renderFolderList(listEl, folders, index, closeActiveFolderDropdown);
+    }
+
+    if (justCreated && folders && folders.length) {
+      const last = folders[folders.length - 1];
+      sendToContentScript({ action: 'saveBookmarkToFolder', index, folderId: last.id });
+      closeFolderModal();
+      closeActiveFolderDropdown();
     }
   }
 
@@ -344,6 +430,19 @@
 
     controls.appendChild(jumpBtn);
     controls.appendChild(deleteBtn);
+    // Save to Folder button
+
+    const saveBtn = document.createElement('button');
+                    saveBtn.className = 'bookmark-btn bookmark-btn-secondary';
+                    saveBtn.textContent = 'Save';
+                    saveBtn.title = 'Save to folder';
+    
+    saveBtn.addEventListener('click', (e) => {
+      window._bookmarkFolderIndex = index;
+      showFolderDropdown(b, index, e.currentTarget);
+    });
+
+    controls.appendChild(saveBtn);
     controls.appendChild(exportBtn);
 
     const notesWrap = document.createElement('div');
@@ -365,6 +464,16 @@
     card.appendChild(snippet);
     card.appendChild(controls);
     card.appendChild(notesWrap);
+
+    // show folder badge if present
+    if (b.folderName) {
+      const badge = document.createElement('div');
+      badge.style.marginTop = '8px';
+      badge.style.fontSize = '12px';
+      badge.style.color = '#2563eb';
+      badge.textContent = 'Folder: ' + b.folderName;
+      card.appendChild(badge);
+    }
 
     return card;
   }
@@ -393,6 +502,174 @@
 
   function requestBookmarks() {
     sendToContentScript({ action: 'getBookmarks' });
+  }
+
+  // Folder modal implementation
+  function openFolderModal(bookmark, index) {
+    // ensure modal container exists
+    let modal = document.getElementById('bookmark-folder-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'bookmark-folder-modal';
+      modal.innerHTML = `
+        <div class="bookmark-folder-overlay"></div>
+        <div class="bookmark-folder-panel">
+          <div class="bookmark-folder-header">Save Bookmark</div>
+          <div class="bookmark-folder-body">
+            <div id="bookmark-folder-list"></div>
+            <div style="margin-top:8px;display:flex;gap:6px;">
+              <input id="bookmark-new-folder-input" placeholder="New folder name" />
+              <button id="bookmark-create-folder" class="bookmark-btn bookmark-btn-primary">Create</button>
+            </div>
+          </div>
+          <div class="bookmark-folder-footer"><button id="bookmark-folder-cancel" class="bookmark-btn">Cancel</button></div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // styles
+      const css = document.createElement('style');
+      css.id = 'bookmark-folder-styles';
+      css.textContent = `
+        #bookmark-folder-modal { position: fixed; inset:0; z-index:2147483650; display:flex; align-items:center; justify-content:center; }
+        .bookmark-folder-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.3); }
+        .bookmark-folder-panel { position:relative; background:white; width:320px; border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,0.2); padding:12px; z-index:2; }
+        .bookmark-folder-header { font-weight:600; margin-bottom:8px; }
+        .bookmark-folder-body { max-height:300px; overflow:auto; }
+        #bookmark-folder-list .folder-item { padding:8px; border-radius:6px; margin-bottom:6px; background:#f3f4f6; cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+        #bookmark-folder-list .folder-item:hover { background:#e5e7eb; }
+        #bookmark-new-folder-input { flex:1; padding:6px; border-radius:6px; border:1px solid #ddd; }
+        #bookmark-create-folder { padding:6px 10px; }
+        .bookmark-folder-footer { margin-top:8px; text-align:right; }
+      `;
+      document.head.appendChild(css);
+
+      // event listeners
+      modal.querySelector('#bookmark-folder-cancel').addEventListener('click', () => closeFolderModal());
+      modal.querySelector('#bookmark-create-folder').addEventListener('click', () => {
+        const name = (document.getElementById('bookmark-new-folder-input').value || '').trim();
+        if (!name) return alert('Enter a folder name');
+        sendToContentScript({ action: 'createFolder', name });
+      });
+    }
+
+    modal.style.display = 'flex';
+    // fetch current folders
+    sendToContentScript({ action: 'getFolders' });
+
+    // populate when response arrives (listen once)
+    function onFoldersResponse(event) {
+      if (!(event.data && event.data.type === 'bookmarkContentScriptResponse' && event.data.action === 'foldersList')) return;
+      const list = document.getElementById('bookmark-folder-list');
+      list.innerHTML = '';
+      const folders = event.data.folders || [];
+      folders.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'folder-item';
+        const name = document.createElement('span');
+        name.textContent = f.name;
+        const btn = document.createElement('button');
+        btn.className = 'bookmark-btn bookmark-btn-primary';
+        btn.textContent = 'Select';
+        btn.addEventListener('click', () => {
+          sendToContentScript({ action: 'saveBookmarkToFolder', index, folderId: f.id });
+          closeFolderModal();
+        });
+        item.appendChild(name);
+        item.appendChild(btn);
+        list.appendChild(item);
+      });
+      // also handle newly created folder responses
+      if (event.data.justCreated) {
+        // auto-select last created
+        const last = event.data.folders && event.data.folders[event.data.folders.length-1];
+        if (last) {
+          sendToContentScript({ action: 'saveBookmarkToFolder', index, folderId: last.id });
+          closeFolderModal();
+        }
+      }
+      window.removeEventListener('message', onFoldersResponse);
+    }
+    window.addEventListener('message', onFoldersResponse);
+
+  }
+
+  function closeFolderModal() {
+    const m = document.getElementById('bookmark-folder-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  function showFolderDropdown(bookmark, index, anchorEl) {
+    closeActiveFolderDropdown();
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'bookmark-folder-dropdown';
+    dropdown.className = 'bookmark-dropdown';
+    dropdown.innerHTML = `
+      <div class="bd-list" id="bd-folder-list">Loading...</div>
+      <div class="bd-row">
+        <input id="bd-new-folder" placeholder="New folder name" />
+        <button id="bd-create" class="bookmark-btn bookmark-btn-primary">Create</button>
+      </div>
+    `;
+    document.body.appendChild(dropdown);
+
+    const rect = anchorEl.getBoundingClientRect();
+    dropdown.style.position = 'absolute';
+    dropdown.style.zIndex = 2147483650;
+    const top = window.scrollY + rect.bottom + 6;
+    const left = Math.min(window.scrollX + rect.left, window.innerWidth - 320);
+    dropdown.style.top = top + 'px';
+    dropdown.style.left = left + 'px';
+    dropdown.style.width = '300px';
+
+    function closeDropdown() {
+      const d = document.getElementById('bookmark-folder-dropdown');
+      if (d) d.remove();
+      window.removeEventListener('click', onDocClick);
+      window.removeEventListener('message', onFoldersResponse);
+      if (activeFolderDropdownClose === closeDropdown) {
+        activeFolderDropdownClose = null;
+      }
+    }
+
+    activeFolderDropdownClose = closeDropdown;
+
+    function onDocClick(ev) {
+      if (!dropdown.contains(ev.target) && ev.target !== anchorEl) closeDropdown();
+    }
+    setTimeout(() => window.addEventListener('click', onDocClick), 0);
+
+    function onFoldersResponse(event) {
+      if (!(event.data && event.data.type === 'bookmarkContentScriptResponse' && event.data.action === 'foldersList')) return;
+      const listEl = document.getElementById('bd-folder-list');
+      if (!listEl) return;
+
+      if (event.data.error) {
+        listEl.textContent = event.data.error;
+        return;
+      }
+
+      renderFolderList(listEl, event.data.folders || [], index, closeDropdown);
+
+      if (event.data.justCreated && event.data.folders && event.data.folders.length) {
+        const last = event.data.folders[event.data.folders.length - 1];
+        sendToContentScript({ action: 'saveBookmarkToFolder', index, folderId: last.id });
+        closeDropdown();
+      }
+    }
+    window.addEventListener('message', onFoldersResponse);
+
+    const createButton = dropdown.querySelector('#bd-create');
+    if (createButton) {
+      createButton.addEventListener('click', () => {
+        const name = (document.getElementById('bd-new-folder').value || '').trim();
+        if (!name) return alert('Enter a folder name');
+        sendToContentScript({ action: 'createFolder', name });
+      });
+    }
+
+    sendToContentScript({ action: 'getFolders' });
   }
 
   // Initialize panel
@@ -444,6 +721,14 @@
       if (event.data && event.data.type === 'bookmarkContentScriptResponse') {
         if (event.data.action === 'bookmarksList') {
           renderList(event.data.bookmarks);
+        }
+        if (event.data.action === 'foldersList') {
+          renderFolderResponse(
+            event.data.folders || [],
+            event.data.justCreated,
+            window._bookmarkFolderIndex,
+            event.data.error
+          );
         }
       }
       if (event.data && event.data.type === 'bookmarkAdded') {
