@@ -42,6 +42,8 @@ import {
   rejectJoinRequest,
 } from "../services/joinRequestService";
 
+import { createNotification } from "../services/notificationService";
+
 function SubjectPage() {
   const { user } = useAuth();
   const { subjectId } = useParams();
@@ -334,6 +336,14 @@ const handleOpenShare = async () => {
   try {
     const token = await generateShareToken(subject.id);
     setShareLink(`${window.location.origin}/join/${token}`);
+
+    await createNotification(user.uid, {
+      type: "folder_shared",
+      title: "Folder shared successfully",
+      description: `Share link ready for "${subject.subjectName}"`,
+      subjectId: subject.id,
+    });
+
   } catch (error) {
     console.error("Failed to generate share link:", error);
   } finally {
@@ -380,35 +390,35 @@ const handleRejectRequest = async (request) => {
     <div className="min-h-screen bg-[#f3eee5]">
       {/* Top red bar */}
       <header className="border-b border-border bg-[#7d0000] text-cream-dark">
-                <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-2 text-cream-dark hover:bg-cream-dark/10"
-                    onClick={() => navigate("/")}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    Home
-                  </Button>
+                        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-6 py-4">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
+                            onClick={() => navigate("/")}
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                            Home
+                          </Button>
 
-                  {isOwner && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-cream-dark hover:text-[#7d0000]"
-                      onClick={handleOpenShare}
-                    >
-                      <Share2 className="h-4 w-4" />
-                      Share Folder
-                    </Button>
-                  )}
-                </div>
+                          {isOwner && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
+                              onClick={handleOpenShare}
+                            >
+                              <Share2 className="h-4 w-4" />
+                              Share Folder
+                            </Button>
+                          )}
+                        </div>
       </header>
 
       {isOwner && isShareOpen && (
                         <div className="mx-6 mt-4 rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-foreground">Share this folder</span>
+                            <span className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]">Share this folder</span>
                             <button
                               type="button"
                               className="text-xs text-muted-foreground"
@@ -486,14 +496,22 @@ const handleRejectRequest = async (request) => {
       <main className="mt-6 flex flex-col gap-0 pb-10">
         {/* Folder header */}
         <section className="pb-4 pt-6">
+          
           <div className="relative h-24 overflow-hidden rounded-t-3xl bg-[#f7f2ea] px-3">
-            <div className="absolute inset-x-0 top-16 z-20 h-6 rounded-tl-[18px] rounded-tr-[18px] bg-[#4b6478]" />
-            <div className="absolute left-8 top-0 z-10 inline-flex h-16 min-w-[280px] items-center justify-center rounded-t-[12px] rounded-b-none bg-[#4b6478] px-12 text-white">
-              <span className="font-serif text-2xl font-medium leading-none">
-                {subject.subjectName}
-              </span>
+                  <svg
+                    className="absolute left-8 top-0 h-16 min-w-[280px]"
+                    width="280" height="64" viewBox="0 0 280 64" preserveAspectRatio="none"
+                  >
+                    <path
+                      d="M0,64 L0,16 Q0,0 16,0 L200,0 Q216,0 224,10 L240,26 Q248,34 260,34 L280,34 L280,64 Z"
+                      fill="#4b6478"
+                    />
+                  </svg>
+                  <span className="absolute left-16 top-4 z-10 font-serif text-2xl font-medium leading-none text-white">
+                    {subject.subjectName}
+                  </span>
+                  <div className="absolute inset-x-0 top-16 z-0 h-6 rounded-tl-[18px] rounded-tr-[18px] bg-[#4b6478]" />
             </div>
-          </div>
 
             {/* Tabs */}
             <div className="flex gap-3 border-b border-[#d2c6b3] px-6 pb-3">
@@ -550,7 +568,7 @@ const handleRejectRequest = async (request) => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-lg border-[#b34747] bg-[#f7f2ea] px-5 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-cream-dark md:ml-auto"
+                className="gap-2 rounded-lg border-[#b34747] bg-[#f7f2ea] px-5 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-[#f7f2ea] md:ml-auto"
                 onClick={
                   activeTab === "flashcards"
                     ? () => {

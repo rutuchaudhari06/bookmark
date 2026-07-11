@@ -7,13 +7,17 @@ import SubjectCard from "../components/SubjectCard";
 import {
   createSubject,
   getUserSubject,
-  deleteSubject,
+  deleteSubjectCascade,
   updateSubjectName,
   generateShareToken,
+  getSubjectCounts,
 } from "../services/subjectService";
 import { logout } from "../config/Auth";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+
+import NotificationBell from "../components/NotificationBell";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 function SubDashboard() {
   const { user } = useAuth();
@@ -25,11 +29,21 @@ function SubDashboard() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
 
+  const [counts, setCounts] = useState({}); // { [subjectId]: {notes, flashcards, bookmarks} }
+  const [deleteTarget, setDeleteTarget] = useState(null); // subject object to delete 
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const loadSubjects = async () => {
     if (!user) return;
 
     const data = await getUserSubject(user.uid);
     setSubjects(data);
+
+    const entries = await Promise.all(
+      data.map(async (s) => [s.id, await getSubjectCounts(s.id)])
+    );
+    
+    setCounts(Object.fromEntries(entries));
   };
 
   const handleCreate = async (e) => {
@@ -57,6 +71,20 @@ function SubDashboard() {
   const handleDelete = async (id) => {
     await deleteSubject(id);
     loadSubjects();
+  };
+
+  const handleDeleteConfirmed = async () => {
+      if (!deleteTarget) return;
+      setIsDeleting(true);
+      try {
+        await deleteSubjectCascade(deleteTarget.id);
+        setDeleteTarget(null);
+        await loadSubjects();
+      } catch (error) {
+        console.error("Failed to delete folder:", error);
+      } finally {
+        setIsDeleting(false);
+      }
   };
 
   const handleUpdate = async (id, newName) => {
@@ -102,16 +130,17 @@ function SubDashboard() {
 
           <div className="flex items-center gap-3">
             {user && (
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-medium text-cream-dark">
-                  {user.email}
-                </span>
-              </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-medium text-cream-dark">{user.email}</span>
+                  </div>
+                  <NotificationBell userId={user.uid} />
+                </div>
             )}
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-cream-dark hover:text-[#7d0000]"
+              className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
@@ -138,9 +167,6 @@ function SubDashboard() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <button className="inline-flex h-10 items-center rounded-full border border-[#c6b9a3] bg-[#fbf7f0] px-4 text-sm text-foreground shadow-sm">
-                Stickers
-              </button>
             </div>
           </div>
 
@@ -149,7 +175,7 @@ function SubDashboard() {
               type="button"
               variant="outline"
               size="lg"
-              className="gap-2 rounded-full border-[#b34747] bg-[#f7f2ea] px-6 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-cream-dark"
+              className="gap-2 rounded-full border-[#b34747] bg-[#f7f2ea] px-6 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-[#f7f2ea]"
               onClick={() => setIsCreateOpen(true)}
               disabled={isCreating}
             >
@@ -204,16 +230,17 @@ function SubDashboard() {
         {/* Subjects grid (cards sit on page background, not in container) */}
         <section className="mt-2 space-y-4">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredSubjects.map((subject) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
-                onShare={handleShare}
-                onClick={() => navigate(`/subject/${subject.id}`)}
-              />
-            ))}
+                  {filteredSubjects.map((subject) => (
+                        <SubjectCard
+                          key={subject.id}
+                          subject={subject}
+                          isOwner={subject.ownerId === user?.uid}
+                          counts={counts[subject.id]}
+                          onDeleteRequest={setDeleteTarget}
+                          onShare={handleShare}
+                          onClick={() => navigate(`/subject/${subject.id}`)}
+                        />
+                  ))}
           </div>
 
           {filteredSubjects.length === 0 && (
@@ -225,6 +252,16 @@ function SubDashboard() {
           )}
         </section>
       </main>
+
+      <ConfirmDialog
+            open={!!deleteTarget}
+            title={`Delete "${deleteTarget?.subjectName || "this folder"}"?`}
+            description="This permanently deletes the folder along with all its notes, flashcards, bookmarks, and pending join requests. This cannot be undone."
+            onConfirm={handleDeleteConfirmed}
+            onCancel={() => setDeleteTarget(null)}
+            isLoading={isDeleting}
+      />
+      
     </div>
   );
 }

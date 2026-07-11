@@ -1,4 +1,4 @@
-import {addDoc, getDoc,updateDoc, deleteDoc, collection, query, where, doc, serverTimestamp, getDocs} from "firebase/firestore";
+import {addDoc, getDoc,updateDoc, deleteDoc, collection, query, where, doc, serverTimestamp, getDocs, writeBatch, getCountFromServer} from "firebase/firestore";
 import {db} from "../config/firebase";
 
 import {arrayUnion} from "firebase/firestore";
@@ -64,6 +64,39 @@ export const deleteSubject = async(subjectId)=>{
 
     await deleteDoc(ref);
 
+};
+
+const deleteSubcollectionInto = async (subjectId, subcollectionName, batch) => {
+  const snap = await getDocs(collection(db, "subjects", subjectId, subcollectionName));
+  snap.forEach((d) => batch.delete(d.ref));
+};
+
+// Deletes a subject and all its nested data (notes, flashcards, bookmarks,
+// joinRequests) in one batch. Note: writeBatch has a 500-operation cap —
+// fine for typical folder sizes; split into multiple batches if a folder
+// could realistically exceed ~490 combined child docs.
+export const deleteSubjectCascade = async (subjectId) => {
+  const batch = writeBatch(db);
+  await deleteSubcollectionInto(subjectId, "notes", batch);
+  await deleteSubcollectionInto(subjectId, "flashcards", batch);
+  await deleteSubcollectionInto(subjectId, "bookmarks", batch);
+  await deleteSubcollectionInto(subjectId, "joinRequests", batch);
+  batch.delete(doc(db, "subjects", subjectId));
+  await batch.commit();
+};
+
+// See note at top of this response about bookmarks collection location.
+export const getSubjectCounts = async (subjectId) => {
+  const [notesSnap, flashSnap, bookmarksSnap] = await Promise.all([
+    getCountFromServer(collection(db, "subjects", subjectId, "notes")),
+    getCountFromServer(collection(db, "subjects", subjectId, "flashcards")),
+    getCountFromServer(collection(db, "subjects", subjectId, "bookmarks")),
+  ]);
+  return {
+    notes: notesSnap.data().count,
+    flashcards: flashSnap.data().count,
+    bookmarks: bookmarksSnap.data().count,
+  };
 };
 
 // AFTER
