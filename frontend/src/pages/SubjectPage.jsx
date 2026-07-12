@@ -10,7 +10,9 @@ import {
   Search,
   Lock,
   Image,
-  Share2, Check, X
+  Share2, Check, X,
+  LogOut,
+  BookOpen,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -35,6 +37,8 @@ import BookmarkCard from "../components/BookmarkCard";
 
 import { getBookmarks , deleteBookmark } from "../services/bookmarkService";
 import { generateShareToken } from "../services/subjectService";
+import { logout } from "../config/Auth";
+import NotificationBell from "../components/NotificationBell";
 
 import {
   getPendingRequests,
@@ -265,10 +269,15 @@ function SubjectPage() {
         }
   }, [subject, user]);
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   if (!subject) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="rounded-xl border border-border bg-card px-6 py-4 text-sm text-muted-foreground shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[#F7F4ED]">
+        <div className="rounded-xl border border-[#ECE3D1] bg-white px-6 py-4 text-sm text-[#8B8478] shadow-sm">
           Loading subject...
         </div>
       </div>
@@ -387,41 +396,72 @@ const handleRejectRequest = async (request) => {
 };
 
   return (
-    <div className="min-h-screen bg-[#f3eee5]">
-      {/* Top red bar */}
-      <header className="border-b border-border bg-[#7d0000] text-cream-dark">
-                        <div className="mx-auto flex max-w-6xl items-center justify-end gap-3 px-6 py-4">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
-                            onClick={() => navigate("/")}
-                          >
-                            <ArrowLeft className="h-4 w-4" />
-                            Home
-                          </Button>
+    <div className="min-h-screen bg-[#F7F4ED]">
+      {/* Header — burgundy cover with a cream folder-flap corner that
+          blends into the page, exactly like the master dashboard header */}
+      <header className="relative h-[104px] w-full">
+        <div className="absolute inset-0 bg-[#7A0912]" />
+        <div className="absolute left-0 top-0 h-[104px] w-[120px] rounded-br-[104px] bg-[#F7F4ED] md:w-[150px]" />
 
-                          {isOwner && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]"
-                              onClick={handleOpenShare}
-                            >
-                              <Share2 className="h-4 w-4" />
-                              Share Folder
-                            </Button>
-                          )}
-                        </div>
+        <div className="relative z-10 mx-auto flex h-full max-w-6xl items-center justify-between pl-[136px] pr-6 md:pl-[166px] md:pr-10">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#F7F4ED]/25">
+              <BookOpen className="h-4 w-4 text-[#F7F4ED]" />
+            </span>
+            <p className="text-[16px] font-semibold tracking-tight text-[#F7F4ED]">
+              AIMarks
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 md:gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 rounded-[10px] border-[#F7F4ED]/25 bg-transparent text-[#F7F4ED] transition-colors duration-200 hover:border-[#F7F4ED]/40 hover:bg-[#F7F4ED]/10"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Home</span>
+            </Button>
+
+            {isOwner && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 rounded-[10px] border-[#F7F4ED]/25 bg-transparent text-[#F7F4ED] transition-colors duration-200 hover:border-[#F7F4ED]/40 hover:bg-[#F7F4ED]/10"
+                onClick={handleOpenShare}
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            )}
+
+            {user && (
+              <span className="hidden max-w-[160px] truncate text-[13px] font-medium text-[#F7F4ED]/85 lg:inline">
+                {user.email}
+              </span>
+            )}
+            {user && <NotificationBell userId={user.uid} />}
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[#F7F4ED]/85 transition-colors duration-200 hover:bg-[#F7F4ED]/10"
+              aria-label="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </header>
 
       {isOwner && isShareOpen && (
-                        <div className="mx-6 mt-4 rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
+                        <div className="mx-6 mt-4 rounded-xl border border-[#ECE3D1] bg-white p-4 shadow-[0_1px_6px_rgba(47,47,47,0.05)]">
                           <div className="flex items-center justify-between">
-                            <span className="gap-2 border-cream-dark/40 bg-transparent text-cream-dark hover:bg-[#f7f2ea] hover:text-[#7d0000]">Share this folder</span>
+                            <span className="text-sm font-medium text-[#2F2F2F]">Share this folder</span>
                             <button
                               type="button"
-                              className="text-xs text-muted-foreground"
+                              className="text-xs text-[#8B8478]"
                               onClick={() => setIsShareOpen(false)}
                             >
                               Close
@@ -431,11 +471,12 @@ const handleRejectRequest = async (request) => {
                             <Input
                               readOnly
                               value={isGeneratingLink ? "Generating link..." : shareLink}
-                              className="h-10 bg-white"
+                              className="h-10 rounded-full bg-[#F7F4ED]"
                             />
                             <Button
                               type="button"
                               size="sm"
+                              className="rounded-full"
                               onClick={handleCopyShareLink}
                               disabled={isGeneratingLink || !shareLink}
                             >
@@ -446,29 +487,29 @@ const handleRejectRequest = async (request) => {
                       )}
 
                       {isOwner && pendingRequests.length > 0 && (
-                        <div className="mx-6 mt-4 rounded-xl border border-[#cfc4b3] bg-[#fbf7f0] p-4 shadow-sm">
-                          <p className="text-sm font-medium text-foreground">
+                        <div className="mx-6 mt-4 rounded-xl border border-[#ECE3D1] bg-white p-4 shadow-[0_1px_6px_rgba(47,47,47,0.05)]">
+                          <p className="text-sm font-medium text-[#2F2F2F]">
                             Pending Requests ({pendingRequests.length})
                           </p>
                           <div className="mt-3 space-y-2">
                             {pendingRequests.map((request) => (
                               <div
                                 key={request.id}
-                                className="flex items-center justify-between rounded-lg border border-[#d0c7be] bg-white px-3 py-2 text-sm"
+                                className="flex items-center justify-between rounded-lg border border-[#ECE3D1] bg-[#F7F4ED] px-3 py-2 text-sm"
                               >
                                 <div>
-                                  <p className="font-medium text-foreground">
+                                  <p className="font-medium text-[#2F2F2F]">
                                     {request.displayName || request.email || "Unknown user"}
                                   </p>
                                   {request.email && (
-                                    <p className="text-xs text-muted-foreground">{request.email}</p>
+                                    <p className="text-xs text-[#8B8478]">{request.email}</p>
                                   )}
                                 </div>
                                 <div className="flex gap-2">
                                   <Button
                                     type="button"
                                     size="sm"
-                                    className="gap-1"
+                                    className="gap-1 rounded-full"
                                     disabled={requestActionId === request.id}
                                     onClick={() => handleApproveRequest(request)}
                                   >
@@ -479,7 +520,7 @@ const handleRejectRequest = async (request) => {
                                     type="button"
                                     size="sm"
                                     variant="outline"
-                                    className="gap-1"
+                                    className="gap-1 rounded-full"
                                     disabled={requestActionId === request.id}
                                     onClick={() => handleRejectRequest(request)}
                                   >
@@ -493,28 +534,32 @@ const handleRejectRequest = async (request) => {
                         </div>
       )}
 
-      <main className="mt-6 flex flex-col gap-0 pb-10">
-        {/* Folder header */}
-        <section className="pb-4 pt-6">
-          
-          <div className="relative h-24 overflow-hidden rounded-t-3xl bg-[#f7f2ea] px-3">
-                  <svg
-                    className="absolute left-8 top-0 h-16 min-w-[280px]"
-                    width="280" height="64" viewBox="0 0 280 64" preserveAspectRatio="none"
-                  >
-                    <path
-                      d="M0,64 L0,16 Q0,0 16,0 L200,0 Q216,0 224,10 L240,26 Q248,34 260,34 L280,34 L280,64 Z"
-                      fill="#4b6478"
-                    />
-                  </svg>
-                  <span className="absolute left-16 top-4 z-10 font-serif text-2xl font-medium leading-none text-white">
-                    {subject.subjectName}
-                  </span>
-                  <div className="absolute inset-x-0 top-16 z-0 h-6 rounded-tl-[18px] rounded-tr-[18px] bg-[#4b6478]" />
-            </div>
+      <main className="flex flex-col gap-0 pb-10">
+        {/* Folder tab + strip — one continuous folder cover, like the
+            master header, holding the subject name */}
+        <section className="pt-8">
+          <div className="relative mx-6">
+            <svg
+              className="absolute left-2 top-0 z-10 h-14 w-[300px]"
+              viewBox="0 0 300 56"
+              preserveAspectRatio="none"
+              style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.08))" }}
+              aria-hidden="true"
+            >
+              <path
+                d="M0,56 L0,16 Q0,0 16,0 L220,0 Q238,0 248,10 L262,26 Q272,36 288,36 L300,36 L300,56 Z"
+                fill="#4b6478"
+              />
+            </svg>
+            <span className="absolute left-9 top-0 z-20 flex h-14 items-center text-xl font-semibold leading-none text-white">
+              {subject.subjectName}
+            </span>
 
-            {/* Tabs */}
-            <div className="flex gap-3 border-b border-[#d2c6b3] px-6 pb-3">
+            <div className="relative z-0 mt-[40px] h-16 w-full rounded-tl-[22px] rounded-tr-[22px] bg-[#4b6478] shadow-[0_6px_16px_rgba(47,47,47,0.10)]" />
+          </div>
+
+          {/* Category pills */}
+          <div className="flex flex-wrap items-center gap-2.5 px-8 pt-6">
               {[
                 { id: "bookmarks", label: "Bookmarks", count: bookmarks.length },
                 { id: "flashcards", label: "Flashcards", count: flashcards.length },
@@ -526,14 +571,18 @@ const handleRejectRequest = async (request) => {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex items-center gap-2 rounded-md border px-4 py-1.5 text-sm ${
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors duration-200 ${
                       isActive
-                        ? "border-[#4b6478] bg-[#4b6478] text-cream-dark"
-                        : "border-[#c6b9a3] bg-[#f7f2ea] text-foreground"
+                        ? "border-[#4b6478] bg-[#4b6478] text-white"
+                        : "border-[#ECE3D1] bg-white text-[#2F2F2F] hover:border-[#4b6478]/40"
                     }`}
                   >
                     <span>{tab.label}</span>
-                    <span className="rounded-full bg-[#f7f2ea] px-2 text-xs">
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[11px] leading-none ${
+                        isActive ? "bg-white/20 text-white" : "bg-[#F7F4ED] text-[#8B8478]"
+                      }`}
+                    >
                       {tab.count.toString().padStart(2, "0")}
                     </span>
                   </button>
@@ -542,16 +591,16 @@ const handleRejectRequest = async (request) => {
             </div>
 
         {/* Content area */}
-        <div className="border-t border-[#d2c6b3] px-6 pb-8 pt-4">
+        <div className="border-t border-[#ECE3D1] px-8 pb-8 pt-5">
           <div className="space-y-5">
             {/* Search + create row */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-start md:gap-6">
               <div className="relative w-full md:w-[260px]">
-                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground">
+                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-[#8B8478]">
                   <Search className="h-4 w-4" />
                 </span>
                 <Input
-                  className="h-10 rounded-lg border-[#6d6d6d] bg-[#fbf7f0] pl-9"
+                  className="h-10 rounded-full border-[#ECE3D1] bg-white pl-9"
                   placeholder={
                     activeTab === "bookmarks"
                       ? "Search your bookmark"
@@ -568,7 +617,7 @@ const handleRejectRequest = async (request) => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-2 rounded-lg border-[#b34747] bg-[#f7f2ea] px-5 text-sm font-medium text-[#7d0000] hover:bg-[#7d0000] hover:text-[#f7f2ea] md:ml-auto"
+                className="gap-2 rounded-full border-[#7A0912]/30 bg-white px-5 text-sm font-medium text-[#7A0912] transition-colors duration-200 hover:bg-[#7A0912] hover:text-white md:ml-auto"
                 onClick={
                   activeTab === "flashcards"
                     ? () => {
@@ -619,7 +668,7 @@ const handleRejectRequest = async (request) => {
             {activeTab === "bookmarks" && (
               <div className="space-y-4">
                 {filteredBookmarks.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[#8B8478]">
                     No bookmarks yet. Save a chat selection from the Chrome extension to see it here.
                   </p>
                 ) : (
@@ -647,7 +696,7 @@ const handleRejectRequest = async (request) => {
                 {/* Notes grid */}
                 <div className="grid gap-4 md:grid-cols-3">
                   {notes.length === 0 ? (
-                    <p className="text-xs text-muted-foreground md:col-span-3">
+                    <p className="text-xs text-[#8B8478] md:col-span-3">
                       No notes yet. Use &quot;Create custom&quot; to add your
                       first notepad card.
                     </p>
@@ -655,23 +704,23 @@ const handleRejectRequest = async (request) => {
                     notes.map((n) => (
                       <div
                         key={n.id}
-                        className="flex min-h-[260px] flex-col justify-between rounded-md border border-[#d0c7be] bg-[#f7f2ea] shadow-sm"
+                        className="flex min-h-[260px] flex-col justify-between rounded-2xl border border-[#ECE3D1] bg-white shadow-[0_1px_4px_rgba(47,47,47,0.05)]"
                       >
-                        <div className="border-b border-[#d0c7be] bg-[#f0dcc5] px-4 py-2 text-sm font-semibold tracking-wide text-[#333333]">
+                        <div className="rounded-t-2xl border-b border-[#ECE3D1] bg-[#F7F4ED] px-4 py-2 text-sm font-semibold tracking-wide text-[#2F2F2F]">
                           {n.title || "SUBJECT NAME"}
                         </div>
-                        <div className="flex-1 px-4 py-3 text-xs text-[#444444] whitespace-pre-line">
+                        <div className="flex-1 whitespace-pre-line px-4 py-3 text-xs text-[#5C584F]">
                           {n.content || "write notes from here..."}
                         </div>
-                        <div className="flex items-center justify-between border-t border-[#d0c7be] px-3 py-2 text-xs">
-                          <div className="flex items-center gap-2 text-[#555555]">
+                        <div className="flex items-center justify-between border-t border-[#ECE3D1] px-3 py-2 text-xs">
+                          <div className="flex items-center gap-2 text-[#8B8478]">
                             <Lock className="h-4 w-4" />
                             <Image className="h-4 w-4" />
                           </div>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="rounded-full bg-[#7d0000] px-3 py-1 text-xs font-semibold text-white"
+                              className="rounded-full bg-[#7A0912] px-3 py-1 text-xs font-semibold text-white transition-opacity duration-200 hover:opacity-90"
                               onClick={() => {
                                 setTitle(n.title || "");
                                 setContent(n.content || "");
@@ -693,10 +742,10 @@ const handleRejectRequest = async (request) => {
                 {showNoteForm && (
                   <form
                     onSubmit={handleCreate}
-                    className="space-y-3 rounded-xl bg-background/60 p-3 md:p-4"
+                    className="space-y-3 rounded-2xl border border-[#ECE3D1] bg-white p-3 shadow-[0_1px_4px_rgba(47,47,47,0.05)] md:p-4"
                   >
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-foreground">
+                      <label className="text-xs font-medium text-[#2F2F2F]">
                         Title
                       </label>
                       <Input
@@ -707,24 +756,24 @@ const handleRejectRequest = async (request) => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-foreground">
+                      <label className="text-xs font-medium text-[#2F2F2F]">
                         Content
                       </label>
                       <textarea
-                        className="min-h-[96px] w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="min-h-[96px] w-full rounded-lg border border-[#ECE3D1] bg-white px-3 py-2 text-sm text-[#2F2F2F] outline-none ring-offset-background placeholder:text-[#8B8478] focus-visible:ring-2 focus-visible:ring-[#7A0912]/30 focus-visible:ring-offset-2"
                         placeholder="Write notes from here..."
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                       />
                     </div>
 
-                    <div className="flex flex-col items-start justify-between gap-3 border-t border-border pt-3 text-xs md:flex-row md:items-center">
+                    <div className="flex flex-col items-start justify-between gap-3 border-t border-[#ECE3D1] pt-3 text-xs md:flex-row md:items-center">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-foreground">
+                        <span className="text-xs font-medium text-[#2F2F2F]">
                           Visibility
                         </span>
                         <select
-                          className="h-8 rounded-lg border border-input bg-card px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="h-8 rounded-lg border border-[#ECE3D1] bg-white px-2 text-xs text-[#2F2F2F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0912]/30"
                           value={visibility}
                           onChange={(e) => setVisibility(e.target.value)}
                         >
@@ -736,7 +785,7 @@ const handleRejectRequest = async (request) => {
                       <Button
                         type="submit"
                         size="sm"
-                        className="gap-1"
+                        className="gap-1 rounded-full"
                         disabled={isSavingNote}
                       >
                         <StickyNote className="h-4 w-4" />
@@ -757,10 +806,10 @@ const handleRejectRequest = async (request) => {
                 {showFlashcardForm ? (
                   <form
                     onSubmit={handleCreateFlashcard}
-                    className="space-y-3 rounded-xl bg-background/60 p-3 md:p-4"
+                    className="space-y-3 rounded-2xl border border-[#ECE3D1] bg-white p-3 shadow-[0_1px_4px_rgba(47,47,47,0.05)] md:p-4"
                   >
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-foreground">
+                      <label className="text-xs font-medium text-[#2F2F2F]">
                         Question
                       </label>
                       <Input
@@ -771,24 +820,24 @@ const handleRejectRequest = async (request) => {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-foreground">
+                      <label className="text-xs font-medium text-[#2F2F2F]">
                         Answer
                       </label>
                       <textarea
-                        className="min-h-[80px] w-full rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="min-h-[80px] w-full rounded-lg border border-[#ECE3D1] bg-white px-3 py-2 text-sm text-[#2F2F2F] outline-none ring-offset-background placeholder:text-[#8B8478] focus-visible:ring-2 focus-visible:ring-[#7A0912]/30 focus-visible:ring-offset-2"
                         placeholder="Explain it clearly so future-you can recall it fast..."
                         value={answer}
                         onChange={(e) => setAnswer(e.target.value)}
                       />
                     </div>
 
-                    <div className="flex flex-col items-start justify-between gap-3 border-t border-border pt-3 text-xs md:flex-row md:items-center">
+                    <div className="flex flex-col items-start justify-between gap-3 border-t border-[#ECE3D1] pt-3 text-xs md:flex-row md:items-center">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-foreground">
+                        <span className="text-xs font-medium text-[#2F2F2F]">
                           Difficulty
                         </span>
                         <select
-                          className="h-8 rounded-lg border border-input bg-card px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          className="h-8 rounded-lg border border-[#ECE3D1] bg-white px-2 text-xs text-[#2F2F2F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A0912]/30"
                           value={difficulty}
                           onChange={(e) => setDifficulty(e.target.value)}
                         >
@@ -801,7 +850,7 @@ const handleRejectRequest = async (request) => {
                       <Button
                         type="submit"
                         size="sm"
-                        className="gap-1"
+                        className="gap-1 rounded-full"
                         disabled={isSavingCard}
                       >
                         <Sparkles className="h-4 w-4" />
@@ -810,37 +859,37 @@ const handleRejectRequest = async (request) => {
                     </div>
                   </form>
                 ) : flashcards.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-[#8B8478]">
                     No flashcards yet. Use &quot;Create custom&quot; to add your
                     first one.
                   </p>
                 ) : (
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-center md:gap-3">
                     {/* Card */}
-                    <div className="w-full max-w-xl rounded-md border border-[#d0c7be] bg-[#f7f2ea] shadow-sm">
-                      <div className="flex items-center justify-between bg-[#7d0000] px-4 py-2 text-sm font-semibold text-white">
+                    <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-[#ECE3D1] bg-white shadow-[0_2px_10px_rgba(47,47,47,0.06)]">
+                      <div className="flex items-center justify-between bg-[#7A0912] px-4 py-2 text-sm font-semibold text-white">
                         <span>{isFlipped ? "Answer" : "Question"}</span>
                         <button
                           type="button"
-                          className="rounded-full border border-white/60 px-3 py-0.5 text-xs"
+                          className="rounded-full border border-white/50 px-3 py-0.5 text-xs transition-colors duration-200 hover:bg-white/10"
                           onClick={() => setIsFlipped((v) => !v)}
                         >
                           flip
                         </button>
                       </div>
-                      <div className="px-4 py-3 text-sm text-[#333333] min-h-[150px]">
+                      <div className="min-h-[150px] px-4 py-3 text-sm text-[#2F2F2F]">
                         {isFlipped
                           ? flashcards[currentCardIndex].answer
                           : flashcards[currentCardIndex].question}
                       </div>
-                      <div className="flex items-center justify-between border-t border-[#d0c7be] px-4 py-2 text-xs text-[#333333]">
+                      <div className="flex items-center justify-between border-t border-[#ECE3D1] px-4 py-2 text-xs text-[#5C584F]">
                         <span>
                           card {currentCardIndex + 1} of {flashcards.length}
                         </span>
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            className="rounded bg-[#7d0000] px-2 py-1 text-white"
+                            className="rounded-full bg-[#7A0912] px-2.5 py-1 text-white transition-opacity duration-200 hover:opacity-90"
                             onClick={() => {
                               setIsFlipped(false);
                               setCurrentCardIndex((i) => (i > 0 ? i - 1 : i));
@@ -850,7 +899,7 @@ const handleRejectRequest = async (request) => {
                           </button>
                           <button
                             type="button"
-                            className="rounded bg-[#7d0000] px-2 py-1 text-white"
+                            className="rounded-full bg-[#7A0912] px-2.5 py-1 text-white transition-opacity duration-200 hover:opacity-90"
                             onClick={() => {
                               setIsFlipped(false);
                               setCurrentCardIndex((i) =>
@@ -875,10 +924,10 @@ const handleRejectRequest = async (request) => {
                             setIsFlipped(false);
                           }}
                           aria-label={`Go to flashcard ${idx + 1}`}
-                          className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold transition ${
+                          className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold transition-colors duration-200 ${
                             idx === currentCardIndex
                               ? "border-[#0b7a5c] bg-[#0b7a5c] text-white shadow-sm"
-                              : "border-[#d0c7be] bg-[#f7f2ea] text-[#8b8b8b]"
+                              : "border-[#ECE3D1] bg-white text-[#8B8478]"
                           }`}
                         >
                           {idx + 1}
