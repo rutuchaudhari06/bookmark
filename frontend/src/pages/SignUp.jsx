@@ -1,5 +1,6 @@
 import React from 'react'
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Eye, EyeOff, Bookmark } from "lucide-react";
@@ -64,10 +65,10 @@ function SignUp() {
               <span className="font-serif text-xl font-semibold text-foreground">AIMarks</span>
             </div>
   
-            {/* Login Header */}
-            <h1 className="font-serif text-4xl font-semibold text-foreground mb-2">Sign in</h1>
+            {/* Sign up Header */}
+            <h1 className="font-serif text-4xl font-semibold text-foreground mb-2">Sign up</h1>
             <p className="text-muted-foreground mb-8">
-              Welcome back! Keep your AI insights at your fingertips.
+              Create your account and start saving your AI insights.
             </p>
   
             {/* Login Form */}
@@ -120,7 +121,7 @@ function SignUp() {
               </div>
   
               <Button type="submit" className="w-full" size="lg">
-                Sign in
+                Sign up
               </Button>
             </form>
   
@@ -164,7 +165,14 @@ function SignUp() {
                 Apple
               </Button>
             </div>
-  
+
+            <p className="mt-8 text-center text-muted-foreground">
+              Already have an account?{" "}
+              <Link to="/login" className="text-primary hover:text-forest-light font-medium transition-colors">
+                Sign in
+              </Link>
+            </p>
+
           </div>
         </div>
   
