@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Trash2, ExternalLink, MessageSquare } from "lucide-react";
 
 const SOURCE_COLORS = { ChatGPT: "#1f7a4d", Gemini: "#4285f4", Claude: "#d97757" };
-const CLIP = "polygon(0 0, 96% 0, 100% 50%, 96% 100%, 0 100%)";
+const OUTLINE = "#7A0912";
 
 export default function BookmarkCard({ title, snippet, sourceLabel = "G", sourceTag, onDelete, onOpen }) {
   const [expanded, setExpanded] = useState(false);
@@ -11,27 +11,11 @@ export default function BookmarkCard({ title, snippet, sourceLabel = "G", source
   const badgeColor = SOURCE_COLORS[sourceTag] || "#1f7a4d";
 
   return (
-    <div className="group relative my-2.5 transition-transform duration-200 ease-out hover:-translate-y-0.5">
-      {/* thin burgundy outline that traces the exact angled shape */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <polygon
-          points="0,0 96,0 100,50 96,100 0,100"
-          fill="none"
-          stroke="#7A0912"
-          strokeOpacity="0.55"
-          strokeWidth="1"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-
+    <div className="group my-2.5 flex items-stretch transition-[transform,filter] duration-200 ease-out [filter:drop-shadow(0_1px_2px_rgba(47,47,47,0.07))] hover:-translate-y-0.5 hover:[filter:drop-shadow(0_10px_18px_rgba(47,47,47,0.14))]">
+      {/* main body — rounded only on the left, matching top/bottom radius */}
       <div
-        className="flex items-start gap-3 bg-white px-5 py-4 pr-9 shadow-[0_1px_3px_rgba(47,47,47,0.06)] transition-shadow duration-200 group-hover:shadow-[0_10px_22px_rgba(47,47,47,0.12)]"
-        style={{ clipPath: CLIP }}
+        className="flex flex-1 items-start gap-3 rounded-l-2xl border-y border-l px-5 py-4"
+        style={{ borderColor: `${OUTLINE}8c`, backgroundColor: "#FFFFFF" }}
       >
         <div
           className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
@@ -78,6 +62,26 @@ export default function BookmarkCard({ title, snippet, sourceLabel = "G", source
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
+      </div>
+
+      {/* angled tail — same fill as the body, outlined only on its two
+          diagonal edges so it reads as one continuous stroke with the body */}
+      <div className="relative w-4 shrink-0 md:w-5">
+        <svg
+          className="absolute inset-0 h-full w-full"
+          viewBox="0 0 20 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M0,0 L20,50 L0,100"
+            fill="#FFFFFF"
+            stroke={OUTLINE}
+            strokeOpacity="0.55"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
       </div>
     </div>
   );

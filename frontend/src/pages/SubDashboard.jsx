@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Plus, LogOut, Search } from "lucide-react";
+import { BookOpen, Plus, Search } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import SubjectCard from "../components/SubjectCard";
@@ -18,6 +18,8 @@ import { Input } from "../components/ui/input";
 
 import NotificationBell from "../components/NotificationBell";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ProfileMenu from "../components/ProfileMenu";
+import Toast from "../components/Toast";
 
 function SubDashboard() {
   const { user } = useAuth();
@@ -32,6 +34,17 @@ function SubDashboard() {
   const [counts, setCounts] = useState({}); // { [subjectId]: {notes, flashcards, bookmarks} }
   const [deleteTarget, setDeleteTarget] = useState(null); // subject object to delete 
   const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  const [activePanel, setActivePanel] = useState(null);
+// null | "notification" | "profile"
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3000);
+  };
 
   const loadSubjects = async () => {
     if (!user) return;
@@ -95,12 +108,15 @@ function SubDashboard() {
   };
 
   const handleShare = async (subjectId) => {
-    const token = await generateShareToken(subjectId);
-    const shareLink = `${window.location.origin}/join/${token}`;
-    navigator.clipboard
-      ?.writeText(shareLink)
-      .then(() => alert("Share link copied to clipboard!"))
-      .catch(() => alert(`Share this link: ${shareLink}`));
+    try {
+      const token = await generateShareToken(subjectId);
+      const shareLink = `${window.location.origin}/join/${token}`;
+      await navigator.clipboard.writeText(shareLink);
+      showToast("Folder link copied to clipboard", "success");
+    } catch (error) {
+      console.error("Failed to share folder:", error);
+      showToast("Unable to copy link. Please try again.", "error");
+    }
   };
 
   const handleLogout = async () => {
@@ -114,56 +130,58 @@ function SubDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F7F4ED]">
-      {/* Top navigation / header — burgundy panel, with only the tab in cream */}
-      <header className="relative h-[104px] px-4 pt-4 sm:px-8">
-        {/* Folder tab — the ONLY cream part, peeking above the burgundy panel */}
-        <div
-          className="absolute left-8 top-0 z-0 h-8 w-36 rounded-t-xl sm:left-12 sm:w-44"
-          style={{ backgroundColor: "#F6F1E8" }}
-          aria-hidden="true"
-        />
+      {/* Top of page — the header IS the cover of one large master folder,
+          lying flush against the top of the page (not a floating card).
+          A single tab pokes up on the left, the wide flap below sweeps into
+          the cream page with an uneven, hand-cut curve, and every folder
+          card beneath it reads as what's stored inside. */}
+      <header className="relative w-full">
+        {/* cream folder lip (matches page background) */}
+              <svg
+                className="absolute left-0 top-0 z-10 h-[121.75px] w-[260px]"
+                viewBox="0 0 260 111"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="fadeToCream" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F7F4ED" stopOpacity="1"/>
+                    <stop offset="90%" stopColor="#F7F4ED" stopOpacity="1"/>
+                    <stop offset="100%" stopColor="#F7F4ED" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
 
-        {/* Burgundy header panel — everything else in the header */}
-        <div
-          className="relative z-10 flex h-full items-center justify-between rounded-2xl px-6 sm:px-10"
-          style={{
-            backgroundColor: "#7D0A0A",
-            boxShadow: "0 6px 16px -8px rgba(30,4,4,0.45)",
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md border border-[#F8F4ED]/25">
-              <BookOpen className="h-4 w-4 text-[#F8F4ED]" />
-            </span>
-            <div className="leading-tight">
-              <p className="text-[17px] font-semibold tracking-tight text-[#F8F4ED]">
+                <path
+                  d="M0,0
+                    L180,0
+                    Q220,0 220,34
+                    L220,80
+                    Q220,111 260,111
+                    L0,111
+                    Z"
+                  fill="url(#fadeToCream)"
+                />
+              </svg>
+
+        {/* burgundy header flap */}
+        <div className="relative z-0 flex h-[110px] w-full items-center rounded-br-[0px] bg-[#7A0912] shadow-[0_10px_18px_-8px_rgba(0,0,0,0.18)]">
+          <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between pl-6 pr-6 md:pl-10 md:pr-10">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#F7F4ED]/25">
+                <BookOpen className="h-4 w-4 text-[#F7F4ED]" />
+              </span>
+              <p className="text-[16px] font-semibold tracking-tight text-[#F7F4ED]">
                 AIMarks
               </p>
-              <p className="text-[12px] text-[#F8F4ED]/60">
-                Your saved knowledge
-              </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-4">
-            {user && (
-              <>
-                <span className="hidden text-sm text-[#F8F4ED]/85 sm:inline">
-                  {user.email}
-                </span>
-                <span className="hidden h-5 w-px bg-[#F8F4ED]/20 sm:inline-block" aria-hidden="true" />
-                <NotificationBell userId={user.uid} />
-              </>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-md border-[#F8F4ED]/25 bg-transparent text-[#F8F4ED] transition-colors duration-200 hover:bg-[#F8F4ED] hover:text-[#7D0A0A]"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
+            <div className="ml-auto flex items-center gap-2.5 md:gap-4">
+              
+              <div className="relative z-0 flex h-[100px] w-full items-center justify-end gap-5">
+                        {user && <ProfileMenu user={user} onLogout={handleLogout} open={activePanel === "profile"} onOpen={() => setActivePanel("profile")} onClose={() => setActivePanel(null)}/>}
+                        {user && <NotificationBell userId={user.uid} open={activePanel === "notification"} onOpen={() => setActivePanel("notification")} onClose={() => setActivePanel(null)}/>}
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -279,7 +297,8 @@ function SubDashboard() {
             onCancel={() => setDeleteTarget(null)}
             isLoading={isDeleting}
       />
-      
+
+      <Toast toast={toast} />
     </div>
   );
 }

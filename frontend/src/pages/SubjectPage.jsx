@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,8 +10,7 @@ import {
   Search,
   Lock,
   Image,
-  Share2, Check, X,
-  LogOut,
+  Share2,
   BookOpen,
 } from "lucide-react";
 
@@ -39,14 +38,9 @@ import { getBookmarks , deleteBookmark } from "../services/bookmarkService";
 import { generateShareToken } from "../services/subjectService";
 import { logout } from "../config/Auth";
 import NotificationBell from "../components/NotificationBell";
+import ProfileMenu from "../components/ProfileMenu";
+import Toast from "../components/Toast";
 
-import {
-  getPendingRequests,
-  approveJoinRequest,
-  rejectJoinRequest,
-} from "../services/joinRequestService";
-
-import { createNotification } from "../services/notificationService";
 
 function SubjectPage() {
   const { user } = useAuth();
@@ -82,12 +76,17 @@ function SubjectPage() {
 
   const [bookmarks,setBookmarks]=useState([]);
 
-  const [shareLink, setShareLink] = useState("");
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
-  const [requestActionId, setRequestActionId] = useState(null);
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  //active panel
+  const [activePanel, setActivePanel] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 3000);
+  };
 
   const loadSubject = async () => {
     const data = await getSubjectById(subjectId);
@@ -263,12 +262,6 @@ function SubjectPage() {
     }
   }, [user, subject, subjectId]);
 
-  useEffect(() => {
-        if (subject && user && subject.ownerId === user.uid) {
-          loadPendingRequests();
-        }
-  }, [subject, user]);
-
   const handleLogout = async () => {
     await logout();
     navigate("/login");
@@ -324,242 +317,154 @@ function SubjectPage() {
     }
   };
 
-  const loadPendingRequests = async () => {
+//runs when owner clicks the Share button — generates the link, copies it
+//immediately, and confirms via toast instead of a multi-step modal
+const handleShareFolder = async () => {
   if (!subject) return;
-  setIsLoadingRequests(true);
-  try {
-    const requests = await getPendingRequests(subject.id);
-    setPendingRequests(requests);
-  } catch (error) {
-    console.error("Failed to load join requests:", error);
-  } finally {
-    setIsLoadingRequests(false);
-  }
-};
-
-//runs when owner clicks on share button to generate share link for that subject
-const handleOpenShare = async () => {
-  if (!subject) return;
-  setIsShareOpen(true);
-  setIsGeneratingLink(true);
   try {
     const token = await generateShareToken(subject.id);
-    setShareLink(`${window.location.origin}/join/${token}`);
-
-    await createNotification(user.uid, {
-      type: "folder_shared",
-      title: "Folder shared successfully",
-      description: `Share link ready for "${subject.subjectName}"`,
-      subjectId: subject.id,
-    });
-
+    const link = `${window.location.origin}/join/${token}`;
+    await navigator.clipboard.writeText(link);
+    showToast("Folder link copied to clipboard", "success");
   } catch (error) {
-    console.error("Failed to generate share link:", error);
-  } finally {
-    setIsGeneratingLink(false);
-  }
-};
-
-//runs when user clicks on copy button to copy the share link to clipboard
-const handleCopyShareLink = () => {
-  navigator.clipboard
-    ?.writeText(shareLink)
-    .then(() => alert("Share link copied to clipboard!"))
-    .catch(() => alert(`Share this link: ${shareLink}`));
-};
-
-const handleApproveRequest = async (request) => {
-  if (!subject) return;
-  setRequestActionId(request.id);
-  try {
-    await approveJoinRequest(subject.id, request.id, request.userId);
-    await loadPendingRequests();
-    await loadSubject(); // refresh collaborators list
-  } catch (error) {
-    console.error("Failed to approve request:", error);
-  } finally {
-    setRequestActionId(null);
-  }
-};
-
-const handleRejectRequest = async (request) => {
-  if (!subject) return;
-  setRequestActionId(request.id);
-  try {
-    await rejectJoinRequest(subject.id, request.id);
-    await loadPendingRequests();
-  } catch (error) {
-    console.error("Failed to reject request:", error);
-  } finally {
-    setRequestActionId(null);
+    console.error("Failed to share folder:", error);
+    showToast("Unable to copy link. Please try again.", "error");
   }
 };
 
   return (
     <div className="min-h-screen bg-[#F7F4ED]">
-      {/* Header — burgundy cover with a cream folder-flap corner that
-          blends into the page, exactly like the master dashboard header */}
-      <header className="relative h-[104px] w-full">
-        <div className="absolute inset-0 bg-[#7A0912]" />
-        <div className="absolute left-0 top-0 h-[104px] w-[120px] rounded-br-[104px] bg-[#F7F4ED] md:w-[150px]" />
+      {/* Header — cream folder corner blends into the page, then burgundy cover */}
+      <header className="relative w-full">
+        {/* cream folder lip (matches page background) */}
+              <svg
+                className="absolute left-0 top-0 z-10 h-[121.75px] w-[260px]"
+                viewBox="0 0 260 111"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  <linearGradient id="fadeToCream" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#F7F4ED" stopOpacity="1"/>
+                    <stop offset="90%" stopColor="#F7F4ED" stopOpacity="1"/>
+                    <stop offset="100%" stopColor="#F7F4ED" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
 
-        <div className="relative z-10 mx-auto flex h-full max-w-6xl items-center justify-between pl-[136px] pr-6 md:pl-[166px] md:pr-10">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#F7F4ED]/25">
-              <BookOpen className="h-4 w-4 text-[#F7F4ED]" />
-            </span>
-            <p className="text-[16px] font-semibold tracking-tight text-[#F7F4ED]">
-              AIMarks
-            </p>
-          </div>
+                <path
+                  d="M0,0
+                    L180,0
+                    Q220,0 220,34
+                    L220,80
+                    Q220,111 260,111
+                    L0,111
+                    Z"
+                  fill="url(#fadeToCream)"
+                />
+              </svg>
 
-          <div className="flex items-center gap-2.5 md:gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 rounded-[10px] border-[#F7F4ED]/25 bg-transparent text-[#F7F4ED] transition-colors duration-200 hover:border-[#F7F4ED]/40 hover:bg-[#F7F4ED]/10"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Home</span>
-            </Button>
+        {/* burgundy header flap */}
+        <div className="relative z-0 flex h-[110px] w-full items-center rounded-br-[0px] bg-[#7A0912] shadow-[0_10px_18px_-8px_rgba(0,0,0,0.18)]">
+          <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between pl-6 pr-6 md:pl-10 md:pr-10">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[#F7F4ED]/25">
+                <BookOpen className="h-4 w-4 text-[#F7F4ED]" />
+              </span>
+              <p className="text-[16px] font-semibold tracking-tight text-[#F7F4ED]">
+                AIMarks
+              </p>
+            </div>
 
-            {isOwner && (
+            <div className="ml-auto flex items-center gap-2.5 md:gap-4">
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-2 rounded-[10px] border-[#F7F4ED]/25 bg-transparent text-[#F7F4ED] transition-colors duration-200 hover:border-[#F7F4ED]/40 hover:bg-[#F7F4ED]/10"
-                onClick={handleOpenShare}
+                onClick={() => navigate("/")}
               >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Home</span>
               </Button>
-            )}
 
-            {user && (
-              <span className="hidden max-w-[160px] truncate text-[13px] font-medium text-[#F7F4ED]/85 lg:inline">
-                {user.email}
-              </span>
-            )}
-            {user && <NotificationBell userId={user.uid} />}
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 rounded-[10px] border-[#F7F4ED]/25 bg-transparent text-[#F7F4ED] transition-colors duration-200 hover:border-[#F7F4ED]/40 hover:bg-[#F7F4ED]/10"
+                  onClick={handleShareFolder}
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </Button>
+              )}
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[#F7F4ED]/85 transition-colors duration-200 hover:bg-[#F7F4ED]/10"
-              aria-label="Logout"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
+              <div className="relative z-0 flex h-[100px] w-full items-center justify-end gap-5">
+                        {user && <ProfileMenu user={user} onLogout={handleLogout} open={activePanel === "profile"} onOpen={() => setActivePanel("profile")} onClose={() => setActivePanel(null)}/>}
+                        {user && <NotificationBell userId={user.uid} open={activePanel === "notification"} onOpen={() => setActivePanel("notification")} onClose={() => setActivePanel(null)}/>}
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
-      {isOwner && isShareOpen && (
-                        <div className="mx-6 mt-4 rounded-xl border border-[#ECE3D1] bg-white p-4 shadow-[0_1px_6px_rgba(47,47,47,0.05)]">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-[#2F2F2F]">Share this folder</span>
-                            <button
-                              type="button"
-                              className="text-xs text-[#8B8478]"
-                              onClick={() => setIsShareOpen(false)}
-                            >
-                              Close
-                            </button>
-                          </div>
-                          <div className="mt-2 flex flex-col gap-2 md:flex-row">
-                            <Input
-                              readOnly
-                              value={isGeneratingLink ? "Generating link..." : shareLink}
-                              className="h-10 rounded-full bg-[#F7F4ED]"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="rounded-full"
-                              onClick={handleCopyShareLink}
-                              disabled={isGeneratingLink || !shareLink}
-                            >
-                              Copy Link
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {isOwner && pendingRequests.length > 0 && (
-                        <div className="mx-6 mt-4 rounded-xl border border-[#ECE3D1] bg-white p-4 shadow-[0_1px_6px_rgba(47,47,47,0.05)]">
-                          <p className="text-sm font-medium text-[#2F2F2F]">
-                            Pending Requests ({pendingRequests.length})
-                          </p>
-                          <div className="mt-3 space-y-2">
-                            {pendingRequests.map((request) => (
-                              <div
-                                key={request.id}
-                                className="flex items-center justify-between rounded-lg border border-[#ECE3D1] bg-[#F7F4ED] px-3 py-2 text-sm"
-                              >
-                                <div>
-                                  <p className="font-medium text-[#2F2F2F]">
-                                    {request.displayName || request.email || "Unknown user"}
-                                  </p>
-                                  {request.email && (
-                                    <p className="text-xs text-[#8B8478]">{request.email}</p>
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    className="gap-1 rounded-full"
-                                    disabled={requestActionId === request.id}
-                                    onClick={() => handleApproveRequest(request)}
-                                  >
-                                    <Check className="h-4 w-4" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1 rounded-full"
-                                    disabled={requestActionId === request.id}
-                                    onClick={() => handleRejectRequest(request)}
-                                  >
-                                    <X className="h-4 w-4" />
-                                    Reject
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-      )}
-
       <main className="flex flex-col gap-0 pb-10">
-        {/* Folder tab + strip — one continuous folder cover, like the
-            master header, holding the subject name */}
-        <section className="pt-8">
-          <div className="relative mx-6">
-            <svg
-              className="absolute left-2 top-0 z-10 h-14 w-[300px]"
-              viewBox="0 0 300 56"
-              preserveAspectRatio="none"
-              style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.08))" }}
-              aria-hidden="true"
-            >
-              <path
-                d="M0,56 L0,16 Q0,0 16,0 L220,0 Q238,0 248,10 L262,26 Q272,36 288,36 L300,36 L300,56 Z"
-                fill="#4b6478"
-              />
-            </svg>
-            <span className="absolute left-9 top-0 z-20 flex h-14 items-center text-xl font-semibold leading-none text-white">
-              {subject.subjectName}
-            </span>
+        {/* Folder tab + strip — smooth single-piece folder label */}
+        <section className="relative w-full pt-6">
+          
 
-            <div className="relative z-0 mt-[40px] h-16 w-full rounded-tl-[22px] rounded-tr-[22px] bg-[#4b6478] shadow-[0_6px_16px_rgba(47,47,47,0.10)]" />
-          </div>
+                    <svg
+                    className="block w-full h-[95px]"
+                    viewBox="0 0 1400 88"
+                    preserveAspectRatio="none"
+                  >
+                    <path
+                          d="
+                          M0 88
+                          L0 64
 
-          {/* Category pills */}
-          <div className="flex flex-wrap items-center gap-2.5 px-8 pt-6">
+                          Q0 52 12 52
+                          L60 52
+
+                          Q82 52 85 12
+                          Q82 0 94 0
+
+                          L420 0
+
+                          Q432 0 435 12
+                          Q432 52 454 52
+
+                          L1388 52
+
+                          Q1400 52 1400 64
+
+                          L1400 88
+                          Z
+                          "
+                          fill="#556C80"
+                        />
+                  </svg>
+
+                 
+
+                  <h1
+                                  className="
+                                    absolute
+                                    w-[420px]
+                                    text-center
+                                    top-[20px]
+                                    left-[85px]
+                                    text-[34px]
+                                    font-serif
+                                    tracking-wide
+                                    text-white
+                                    z-10
+                                  "
+                                >
+                                  {subject.subjectName}
+                  </h1>
+
+          {/* Category pills — float above the content divider below */}
+          <div className="relative z-10 -mb-2.5 flex flex-wrap items-center gap-2.5 px-8 pt-5">
               {[
                 { id: "bookmarks", label: "Bookmarks", count: bookmarks.length },
                 { id: "flashcards", label: "Flashcards", count: flashcards.length },
@@ -591,7 +496,7 @@ const handleRejectRequest = async (request) => {
             </div>
 
         {/* Content area */}
-        <div className="border-t border-[#ECE3D1] px-8 pb-8 pt-5">
+        <div className="border-t border-[#ECE3D1] px-8 pb-8 pt-4">
           <div className="space-y-5">
             {/* Search + create row */}
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-start md:gap-6">
@@ -942,6 +847,8 @@ const handleRejectRequest = async (request) => {
         </div>
         </section>
       </main>
+
+      <Toast toast={toast} />
     </div>
   );
 }

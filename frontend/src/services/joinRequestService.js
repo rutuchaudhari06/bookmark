@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   addDoc,
   getDocs,
   query,
@@ -28,7 +29,8 @@ export const findExistingRequest = async (subjectId, userId) => {
   return { id: docSnap.id, ...docSnap.data() };
 };
 
-// Create a join request, unless one already exists for this user.
+// Create a join request, unless one already exists for this user, and
+// notify the folder owner that someone wants in.
 export const createJoinRequest = async (subjectId, user) => {
   const existing = await findExistingRequest(subjectId, user.uid);
   if (existing) return existing;
@@ -41,13 +43,27 @@ export const createJoinRequest = async (subjectId, user) => {
     createdAt: serverTimestamp(),
   });
 
-  if (ownerId) {
-    await createNotification(ownerId, {
-      type: "join_request",
-      title: "New access request",
-      description: `${user.displayName || user.email} requested access to "${subjectName || "your folder"}"`,
-      subjectId,
-    });
+  try {
+    const subjectSnap = await getDoc(doc(db, "subjects", subjectId));
+    if (subjectSnap.exists()) {
+      const subjectData = subjectSnap.data();
+      if (subjectData.ownerId) {
+        await createNotification(subjectData.ownerId, {
+          type: "join_request",
+          title: "New Access Request",
+          description: `${user.displayName || user.email} requested access to "${
+            subjectData.subjectName || "your folder"
+          }"`,
+          subjectId,
+          requestId: docRef.id,
+          requesterId: user.uid,
+          requesterName: user.displayName || user.email,
+          subjectName: subjectData.subjectName || "your folder",
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Failed to notify folder owner:", error);
   }
 
   return { id: docRef.id, userId: user.uid, status: "pending" };
@@ -63,7 +79,7 @@ export const getPendingRequests = async (subjectId) => {
   return requests;
 };
 
-// Owner-only: approve — add to collaborators, then remove the request.
+// Owner-only: approve — add to collaborators, remove the request, notify the requester.
 export const approveJoinRequest = async (subjectId, requestId, userId) => {
   const subjectDocRef = doc(db, "subjects", subjectId);
   await updateDoc(subjectDocRef, {
@@ -73,25 +89,37 @@ export const approveJoinRequest = async (subjectId, requestId, userId) => {
   const requestDocRef = doc(db, "subjects", subjectId, "joinRequests", requestId);
   await deleteDoc(requestDocRef);
 
-  await createNotification(userId, {
-    type: "request_approved",
-    title: "Request approved",
-    description: `You now have access to "${subjectName || "the folder"}"`,
-    subjectId,
-  });
+  try {
+    const subjectSnap = await getDoc(subjectDocRef);
+    const subjectName = subjectSnap.exists() ? subjectSnap.data().subjectName : "the folder";
+    await createNotification(userId, {
+      type: "request_approved",
+      title: "Access Approved",
+      description: `Your request to join "${subjectName}" has been approved.`,
+      subjectId,
+    });
+  } catch (error) {
+    console.error("Failed to notify requester:", error);
+  }
 };
 
-// Owner-only: reject — just remove the request, collaborators untouched.
-export const rejectJoinRequest = async (subjectId, requestId) => {
+// Owner-only: reject — remove the request, collaborators untouched, notify the requester.
+export const rejectJoinRequest = async (subjectId, requestId, userId) => {
   const requestDocRef = doc(db, "subjects", subjectId, "joinRequests", requestId);
   await deleteDoc(requestDocRef);
 
-  if (userId) {
-    await createNotification(userId, {
-      type: "request_rejected",
-      title: "Request declined",
-      description: `Your request to join "${subjectName || "the folder"}" was declined`,
-      subjectId,
-    });
+  try {
+    if (userId) {
+      const subjectSnap = await getDoc(doc(db, "subjects", subjectId));
+      const subjectName = subjectSnap.exists() ? subjectSnap.data().subjectName : "the folder";
+      await createNotification(userId, {
+        type: "request_rejected",
+        title: "Access Rejected",
+        description: `Your request to join "${subjectName}" has been declined.`,
+        subjectId,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to notify requester:", error);
   }
 };
